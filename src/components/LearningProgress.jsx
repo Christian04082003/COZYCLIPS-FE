@@ -1,0 +1,205 @@
+import React, { useState, useEffect } from "react";
+import { FaStar, FaBook, FaLevelUpAlt } from "react-icons/fa";
+
+import bronze1 from "../assets/bronze_1.png";
+import bronze2 from "../assets/bronze_2.png";
+import bronze3 from "../assets/bronze_3.png";
+import bronze4 from "../assets/bronze_4.png";
+import bronze5 from "../assets/bronze_5.png";
+
+import silver1 from "../assets/silver_1.png";
+import silver2 from "../assets/silver_2.png";
+import silver3 from "../assets/silver_3.png";
+import silver4 from "../assets/silver_4.png";
+import silver5 from "../assets/silver_5.png";
+
+import gold1 from "../assets/gold_1.png";
+import gold2 from "../assets/gold_2.png";
+import gold3 from "../assets/gold_3.png";
+import gold4 from "../assets/gold_4.png";
+import gold5 from "../assets/gold_5.png";
+
+import diamond1 from "../assets/diamond_1.png";
+import diamond2 from "../assets/diamond_2.png";
+import diamond3 from "../assets/diamond_3.png";
+import diamond4 from "../assets/diamond_4.png";
+import diamond5 from "../assets/diamond_5.png";
+
+import amethyst1 from "../assets/amethyst_1.png";
+import amethyst2 from "../assets/amethyst_2.png";
+import amethyst3 from "../assets/amethyst_3.png";
+import amethyst4 from "../assets/amethyst_4.png";
+import amethyst5 from "../assets/amethyst_5.png";
+
+import challenger1 from "../assets/challenger_1.png";
+import challenger2 from "../assets/challenger_2.png";
+import challenger3 from "../assets/challenger_3.png";
+import challenger4 from "../assets/challenger_4.png";
+import challenger5 from "../assets/challenger_5.png";
+
+const rankImages = {
+  Bronze: [bronze1, bronze2, bronze3, bronze4, bronze5],
+  Silver: [silver1, silver2, silver3, silver4, silver5],
+  Gold: [gold1, gold2, gold3, gold4, gold5],
+  Diamond: [diamond1, diamond2, diamond3, diamond4, diamond5],
+  Amethyst: [amethyst1, amethyst2, amethyst3, amethyst4, amethyst5],
+  Challenger: [challenger1, challenger2, challenger3, challenger4, challenger5],
+};
+
+const rankOrder = ["Bronze", "Silver", "Gold", "Diamond", "Amethyst", "Challenger"];
+const romanStages = ["V", "IV", "III", "II", "I"];
+
+const LearningProgress = () => {
+  const [rank, setRank] = useState(
+    JSON.parse(localStorage.getItem("rankData")) || {
+      tier: "Bronze",
+      stage: 1,
+    }
+  );
+
+  const [level, setLevel] = useState(() => Number(localStorage.getItem("levelProgress")) || 0);
+  const [points, setPoints] = useState(() => Number(localStorage.getItem("points")) || 0);
+  const [booksRead, setBooksRead] = useState(() => Number(localStorage.getItem("booksRead")) || 0);
+  const [booksCompleted, setBooksCompleted] = useState(() => Number(localStorage.getItem("completedProgress")) || 0);
+
+  const levelGoal = 100;
+  const booksGoal = 10;
+
+  useEffect(() => {
+    const syncProgress = () => {
+      setLevel(Number(localStorage.getItem("levelProgress")) || 0);
+      setBooksCompleted(Number(localStorage.getItem("completedProgress")) || 0);
+      setBooksRead(Number(localStorage.getItem("booksRead")) || 0);
+      setPoints(Number(localStorage.getItem("points")) || 0);
+
+      const storedRank = localStorage.getItem("rankData");
+      if (storedRank) setRank(JSON.parse(storedRank));
+    };
+
+    syncProgress();
+    window.addEventListener("progressUpdate", syncProgress);
+    return () => window.removeEventListener("progressUpdate", syncProgress);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("levelProgress", level);
+    localStorage.setItem("completedProgress", booksCompleted);
+    localStorage.setItem("booksRead", booksRead);
+    localStorage.setItem("points", points);
+
+    window.dispatchEvent(new Event("progressUpdate"));
+  }, [level, booksCompleted, booksRead, points]);
+
+  useEffect(() => {
+    const handleBookOpen = () => {
+      setBooksRead((prev) => {
+        const updated = prev + 1;
+        localStorage.setItem("booksRead", updated);
+        window.dispatchEvent(new Event("progressUpdate"));
+        return updated;
+      });
+    };
+    window.addEventListener("bookOpened", handleBookOpen);
+    return () => window.removeEventListener("bookOpened", handleBookOpen);
+  }, []);
+
+  const upgradeRank = () => {
+    let { tier, stage } = rank;
+
+    if (stage < 5) stage += 1;
+    else {
+      const currentIndex = rankOrder.indexOf(tier);
+      if (currentIndex < rankOrder.length - 1) {
+        tier = rankOrder[currentIndex + 1];
+        stage = 1;
+      }
+    }
+
+    const newRank = { tier, stage };
+    setRank(newRank);
+    localStorage.setItem("rankData", JSON.stringify(newRank));
+
+    setLevel(0);
+    setBooksCompleted(0);
+
+    window.dispatchEvent(new Event("progressUpdate"));
+  };
+
+  useEffect(() => {
+    if (level >= 100 && booksCompleted >= 10) upgradeRank();
+  }, [level, booksCompleted]);
+
+  const levelPercent = Math.min((level / levelGoal) * 100, 100);
+  const booksPercent = Math.min((booksRead / booksGoal) * 100, 100);
+  const currentRankImage = rankImages[rank.tier]?.[rank.stage - 1] || bronze1;
+
+  return (
+    <div className="w-full pt-2 px-4 sm:px-6 lg:px-30 min-h-screen overflow-auto bg-gradient-to-b from-[#FDEBD0] via-[#F1E5D5] to-[#FDEBD0]">
+      <h2 className="text-2xl sm:text-3xl font-extrabold ml-2 mb-3 mt-10 text-[#6A001A]">
+        Learning Progress
+      </h2>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-10 mt-2">
+        <div className="glow-card p-4 sm:p-8 h-[180px] sm:h-[200px] flex flex-col justify-center items-center shadow-lg rounded-xl">
+          <img src={currentRankImage} alt="Rank Icon" className="w-14 sm:w-16 h-14 sm:h-16 mb-2 sm:mb-3 object-contain" />
+          <div className="text-lg sm:text-xl font-semibold text-black">Current Rank</div>
+          <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-black">
+            {rank.tier} {romanStages[rank.stage - 1]}
+          </div>
+        </div>
+
+        <div className="glow-card p-4 sm:p-8 h-[180px] sm:h-[200px] flex flex-col justify-center items-center shadow-lg rounded-xl">
+          <FaLevelUpAlt className="text-green-500 text-3xl sm:text-4xl mb-2 sm:mb-3" />
+          <div className="text-lg sm:text-xl font-semibold text-black">Level</div>
+          <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-black">{level}%</div>
+        </div>
+
+        <div className="glow-card p-4 sm:p-8 h-[180px] sm:h-[200px] flex flex-col justify-center items-center shadow-lg rounded-xl">
+          <FaStar className="text-blue-500 text-3xl sm:text-4xl mb-2 sm:mb-3" />
+          <div className="text-lg sm:text-xl font-semibold text-black">Total Points</div>
+          <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-black">{points}</div>
+        </div>
+
+        <div className="glow-card p-4 sm:p-8 h-[180px] sm:h-[200px] flex flex-col justify-center items-center shadow-lg rounded-xl">
+          <FaBook className="text-red-500 text-3xl sm:text-4xl mb-2 sm:mb-3" />
+          <div className="text-lg sm:text-xl font-semibold text-black">Books Read</div>
+          <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-black">{booksRead}</div>
+        </div>
+      </div>
+
+      <h2 className="text-2xl sm:text-3xl font-extrabold ml-2 mb-3 mt-6 sm:mt-10 text-[#6A001A]">
+        Reading Progress
+      </h2>
+
+      <div className="glow-card border-0 p-4 sm:p-6 shadow-lg h-[300px] sm:h-[350px] flex flex-col">
+        <h1 className="text-xl sm:text-2xl font-bold text-black mb-3">
+          Keep Growing Through Reading
+        </h1>
+
+        <div className="flex justify-between mb-2 mt-4 text-black font-bold text-base sm:text-lg">
+          <span>Level Progress</span>
+          <span>{level}/{levelGoal}</span>
+        </div>
+
+        <div className="w-full h-5 sm:h-6 bg-blue-200 rounded-full">
+          <div className="h-full bg-blue-600 rounded-full" style={{ width: `${levelPercent}%` }}></div>
+        </div>
+
+        <div className="flex justify-between mb-2 mt-6 text-black font-bold text-base sm:text-lg">
+          <span>Books Read</span>
+          <span>{booksRead}/{booksGoal}</span>
+        </div>
+
+        <div className="w-full h-5 sm:h-6 bg-blue-200 rounded-full">
+          <div className="h-full bg-blue-600 rounded-full" style={{ width: `${booksPercent}%` }}></div>
+        </div>
+
+        <div className="mt-3 sm:mt-4 text-black text-base sm:text-lg font-semibold">
+          {booksRead} / {booksGoal} books completed
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default LearningProgress;
