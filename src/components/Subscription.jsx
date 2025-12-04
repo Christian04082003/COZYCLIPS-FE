@@ -145,25 +145,6 @@ const Subscription = () => {
           </div>
         </div>
 
-        <div className="flex space-x-4 mt-6">
-          <button
-            onClick={handleRenew}
-            className={`px-4 py-1.5 rounded text-lg bg-[#6A001A] text-white hover:opacity-90 transition ${
-              clickedButton === "renew" ? "scale-90" : ""
-            }`}
-          >
-            Renew
-          </button>
-
-          <button
-            onClick={handleCancel}
-            className={`px-4 py-1.5 rounded text-lg bg-gray-500 text-white hover:opacity-90 transition ${
-              clickedButton === "cancel" ? "scale-90" : ""
-            }`}
-          >
-            Cancel Subscription
-          </button>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
