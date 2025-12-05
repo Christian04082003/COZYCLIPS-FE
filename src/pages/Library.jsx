@@ -1,248 +1,291 @@
 import React, { useEffect, useState, useRef } from "react";
 import DashboardNavbar from "../components/DashboardNavbar";
 import { useNavigate } from "react-router-dom";
-import { Bookmark, BookmarkCheck } from "lucide-react"; 
+import { Bookmark, BookmarkCheck } from "lucide-react";
+
+// Shuffle helper
+const shuffleArray = (array) => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+// Stable color from ID
+const getStableColor = (id) => {
+  let hash = 0;
+  for (let i = 0; i < String(id).length; i++) {
+    hash = (hash << 5) - hash + String(id).charCodeAt(i);
+    hash |= 0;
+  }
+  const colors = [
+    "bg-pink-200", "bg-yellow-200", "bg-green-200", "bg-blue-200",
+    "bg-indigo-200", "bg-purple-200", "bg-red-200", "bg-orange-200"
+  ];
+  return colors[Math.abs(hash) % colors.length];
+};
 
 const Library = () => {
   const [books, setBooks] = useState([]);
   const [selectedBook, setSelectedBook] = useState(null);
   const [ratings, setRatings] = useState({});
-  const [loading, setLoading] = useState(true);
   const [bookmarkedIds, setBookmarkedIds] = useState([]);
-
-  const [recIndex, setRecIndex] = useState([0, 0, 0, 0]);
-  const [latIndex, setLatIndex] = useState([0, 0, 0, 0]);
-
-  const recRefs = Array.from({ length: 4 }, () => useRef(null));
-  const latRefs = Array.from({ length: 4 }, () => useRef(null));
+  const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
 
-  const randomStars = () =>
-    "★".repeat(Math.floor(Math.random() * 5) + 1).padEnd(5, "☆");
-
+  // Load bookmarks
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("bookmarks") || "[]");
-    setBookmarkedIds(stored.map((b) => b.id));
+    const saved = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+    setBookmarkedIds(saved.map(b => b.id));
   }, []);
 
-  const fetchManyBooks = async () => {
-    let allBooks = [];
-    const totalPages = 50;
-    const batchSize = 5;
-
-    for (let i = 1; i <= totalPages; i += batchSize) {
-      const batch = await Promise.all(
-        [...Array(batchSize)].map((_, idx) => {
-          const page = i + idx;
-          return page <= totalPages
-            ? fetch(`https://gutendex.com/books/?page=${page}`)
-                .then((res) => res.json())
-                .catch(() => null)
-            : null;
-        })
-      );
-
-      const results = batch.filter((b) => b?.results).flatMap((b) => b.results);
-      allBooks = [...allBooks, ...results];
-
-      const uniqueBooks = Array.from(
-        new Map(allBooks.map((b) => [b.id, b])).values()
-      ).slice(0, 1200);
-
-      setRatings((prev) => {
-        const updated = { ...prev };
-        uniqueBooks.forEach((b) => {
-          if (!updated[b.id]) updated[b.id] = randomStars();
-        });
-        return updated;
+  // Fetch books from your working backend
+  const fetchBooks = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("https://czc-eight.vercel.app/api/library/stories?limit=80&refresh=false", {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
+          "Expires": "0"
+        }
       });
 
-      setBooks(uniqueBooks);
+      if (!res.ok) {
+        if (res.status === 503) {
+          setTimeout(fetchBooks, 4000);
+          return;
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (!data.success || !Array.isArray(data.books)) {
+        throw new Error("Invalid response");
+      }
+
+      // Backend already gives us perfect, clean books with .content included
+      let fetchedBooks = data.books.map(book => ({
+        ...book,
+        id: book.id || `book-${Math.random().toString(36).substr(2, 9)}`,
+        title: book.title?.trim() || "Untitled",
+        author: book.author || "Unknown Author",
+        cover_url: book.cover_url || `https://www.gutenberg.org/cache/epub/${book.id.replace("GB", "")}/pg${book.id.replace("GB", "")}.cover.medium.jpg`,
+        content: book.content || null,
+      }));
+
+      // Shuffle for variety
+      fetchedBooks = shuffleArray(fetchedBooks);
+
+      // Generate fake ratings
+      const newRatings = {};
+      fetchedBooks.forEach(b => {
+        if (!ratings[b.id]) {
+          newRatings[b.id] = "★★★★★".substring(0, Math.floor(Math.random() * 3) + 3) + "☆☆☆☆☆".substring(0, 5 - (Math.floor(Math.random() * 3) + 3));
+        }
+      });
+      setRatings(prev => ({ ...prev, ...newRatings }));
+
+      setBooks(fetchedBooks);
       setLoading(false);
+    } catch (err) {
+      console.error("Failed to load books:", err);
+      setTimeout(fetchBooks, 5000);
     }
   };
 
   useEffect(() => {
-    fetchManyBooks();
+    fetchBooks();
   }, []);
 
-  const booksPerSlide = 6;
-
-  const scrollTo = (ref, index) => {
-    if (!ref.current) return;
-    const container = ref.current;
-    const totalSlides = Math.ceil(container.children.length / booksPerSlide);
-    const slideWidth = container.scrollWidth / totalSlides;
-    container.scrollTo({ left: slideWidth * index, behavior: "smooth" });
-  };
-
-  const getSlideCount = (list) => Math.ceil(list.length / booksPerSlide);
-
-  const renderRow = (list, ref, index, setIndex, rowNumber, offset = 0) => {
-    const rowBooks = list.slice(offset).concat(list.slice(0, offset));
-    return (
-      <div className="space-y-4 w-full">
-        <div ref={ref} className="flex space-x-4 gap-[1px] overflow-x-hidden w-full">
-          {rowBooks.map((book) => (
-            <div
-              key={book.id}
-              onClick={() => setSelectedBook(book)}
-              className="
-                bg-white rounded-xl p-3 cursor-pointer
-                shadow-lg shadow-black/20 hover:shadow-xl
-                hover:-translate-y-1 transition-all
-                flex-shrink-0
-                h-[262px] flex flex-col
-                w-[70%] sm:w-[40%] md:w-[24%] lg:w-[14%] xl:w-[12%]
-              "
-            >
-              <img
-                src={book.formats["image/jpeg"] || "/src/assets/book.png"}
-                className="rounded mb-2 object-cover w-full h-28 sm:h-32 md:h-36"
-              />
-              <h3 className="font-semibold text-base sm:text-lg line-clamp-2 break-words">
-                {book.title}
-              </h3>
-              <p className="text-gray-700 text-sm sm:text-base">
-                {book.authors?.[0]?.name || "Unknown"}
-              </p>
-              <p className="text-yellow-500 text-2xl sm:text-3xl mt-auto">
-                {ratings[book.id]}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex justify-center space-x-2 sm:space-x-3">
-          {Array.from({ length: getSlideCount(list) }).map((_, idx) => (
-            <div
-              key={idx}
-              onClick={() => {
-                const newIndex = [...index];
-                newIndex[rowNumber] = idx;
-                setIndex(newIndex);
-                scrollTo(ref, idx);
-              }}
-              className={`rounded-full cursor-pointer transition-all h-2.5 w-2.5 sm:h-3 sm:w-3 ${
-                index[rowNumber] === idx ? "bg-[#b0042b]" : "bg-gray-400"
-              }`}
-            ></div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const recommendedBooks = books.slice(0, 30);
-  const latestBooks = books.slice(30, 60);
-
+  // Bookmark toggle
   const toggleBookmark = (book) => {
-    const stored = JSON.parse(localStorage.getItem("bookmarks") || "[]");
-    const isBookmarked = bookmarkedIds.includes(book.id);
-    let updatedBookmarks;
+    const saved = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+    const exists = saved.some(b => b.id === book.id);
 
-    if (isBookmarked) {
-      updatedBookmarks = stored.filter((b) => b.id !== book.id);
-      setBookmarkedIds((prev) => prev.filter((id) => id !== book.id));
+    let updated;
+    if (exists) {
+      updated = saved.filter(b => b.id !== book.id);
+      setBookmarkedIds(prev => prev.filter(id => id !== book.id));
     } else {
-      updatedBookmarks = [...stored, book];
-      setBookmarkedIds((prev) => [...prev, book.id]);
+      updated = [...saved, book];
+      setBookmarkedIds(prev => [...prev, book.id]);
     }
-
-    localStorage.setItem("bookmarks", JSON.stringify(updatedBookmarks));
-
-    const el = document.getElementById(`bookmark-icon-${book.id}`);
-    if (el) {
-      el.classList.add("scale-up");
-      setTimeout(() => el.classList.remove("scale-up"), 300);
-    }
+    localStorage.setItem("bookmarks", JSON.stringify(updated));
   };
+
+  // Split into rows
+  const chunk = (arr, size) => {
+    const chunks = [];
+    for (let i = 0; i < arr.length; i += size) {
+      chunks.push(arr.slice(i, i + size));
+    }
+    return chunks;
+  };
+
+  const recommendedBooks = books.slice(0, 40);
+  const latestBooks = books.slice(40);
+
+  const recommendedRows = chunk(recommendedBooks, 8);
+  const latestRows = chunk(latestBooks, 8);
 
   return (
     <>
       <DashboardNavbar />
 
-      <div className="pt-20 bg-[#f3ede3] px-4 sm:px-6 lg:px-10 pb-20 min-h-screen">
-        <h1 className="text-black font-bold mb-6 sm:mb-8 text-2xl sm:text-3xl">
-          📚 Library
-        </h1>
+      <div className="pt-20 bg-[#f3ede3] min-h-screen px-4 sm:px-6 lg:px-12 pb-24">
+        <h1 className="text-3xl sm:text-4xl font-bold text-black mb-8">Library</h1>
 
         {loading ? (
-          <p className="text-center text-lg text-gray-700">Loading books...</p>
+          <div className="text-center py-20">
+            <p className="text-xl text-gray-700">Loading your perfect stories...</p>
+          </div>
         ) : (
           <>
-            <h2 className="text-black text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">
-              Recommended
-            </h2>
-            <div className="space-y-8 sm:space-y-10">
-              {recRefs.map((ref, i) =>
-                renderRow(recommendedBooks, ref, recIndex, setRecIndex, i, i * 3)
-              )}
-            </div>
+            {/* Recommended */}
+            <section className="mb-12">
+              <h2 className="text-2xl font-bold text-black mb-6">Recommended for You</h2>
+              {recommendedRows.map((row, i) => (
+                <div key={`rec-${i}`} className="mb-10 overflow-x-auto scrollbar-hide">
+                  <div className="flex gap-4 sm:gap-6 pb-4">
+                    {row.map(book => (
+                      <div
+                        key={book.id}
+                        onClick={() => setSelectedBook(book)}
+                        className="flex-shrink-0 w-44 sm:w-52 cursor-pointer group"
+                      >
+                        <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all hover:-translate-y-2">
+                          <div className="h-64 bg-gray-50 relative overflow-hidden flex items-center justify-center p-2">
+                            {book.cover_url ? (
+                              <img
+                                src={book.cover_url}
+                                alt={book.title}
+                                className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                                onError={(e) => {
+                                  e.target.src = "";
+                                  e.target.parentElement.style.backgroundColor = "#fce7f3";
+                                  e.target.parentElement.innerHTML += `
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                                      <span class="text-6xl mb-2">📖</span>
+                                      <p class="text-sm font-medium text-gray-700 line-clamp-3">${book.title}</p>
+                                    </div>
+                                  `;
+                                }}
+                              />
+                            ) : (
+                              <div className={`h-full w-full flex flex-col items-center justify-center p-4 text-center ${getStableColor(book.id)}`}>
+                                <span className="text-6xl mb-2">📖</span>
+                                <p className="text-sm font-medium text-gray-800 line-clamp-3">{book.title}</p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-4">
+                            <h3 className="font-bold text-sm line-clamp-2">{book.title}</h3>
+                            <p className="text-xs text-gray-600 mt-1">{book.author}</p>
+                            <p className="text-yellow-500 text-lg mt-2">{ratings[book.id] || "★★★★☆"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </section>
 
-            <h2 className="text-black text-xl sm:text-2xl font-semibold mt-10 mb-3 sm:mb-4">
-              Latest
-            </h2>
-            <div className="space-y-8 sm:space-y-10">
-              {latRefs.map((ref, i) =>
-                renderRow(latestBooks, ref, latIndex, setLatIndex, i, i * 3)
-              )}
-            </div>
+            {/* Latest */}
+            <section>
+              <h2 className="text-2xl font-bold text-black mb-6">Latest Additions</h2>
+              {latestRows.map((row, i) => (
+                <div key={`latest-${i}`} className="mb-10 overflow-x-auto scrollbar-hide">
+                  <div className="flex gap-4 sm:gap-6 pb-4">
+                    {row.map(book => (
+                      <div key={book.id} onClick={() => setSelectedBook(book)} className="flex-shrink-0 w-44 sm:w-52 cursor-pointer group">
+                        <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all hover:-translate-y-2">
+                          <div className="h-64 bg-gray-50 relative overflow-hidden flex items-center justify-center p-2">
+                            {book.cover_url ? (
+                              <img
+                                src={book.cover_url}
+                                alt={book.title}
+                                className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                                onError={(e) => {
+                                  e.target.src = "";
+                                  e.target.parentElement.style.backgroundColor = "#fee2e2";
+                                  e.target.parentElement.innerHTML += `
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                                      <span class="text-6xl mb-2">📖</span>
+                                      <p class="text-sm font-medium text-gray-700 line-clamp-3">${book.title}</p>
+                                    </div>
+                                  `;
+                                }}
+                              />
+                            ) : (
+                              <div className={`h-full w-full flex flex-col items-center justify-center p-4 text-center ${getStableColor(book.id)}`}>
+                                <span className="text-6xl mb-2">📖</span>
+                                <p className="text-sm font-medium text-gray-800 line-clamp-3">{book.title}</p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-4">
+                            <h3 className="font-bold text-sm line-clamp-2">{book.title}</h3>
+                            <p className="text-xs text-gray-600 mt-1">{book.author}</p>
+                            <p className="text-yellow-500 text-lg mt-2">{ratings[book.id] || "★★★★☆"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </section>
           </>
         )}
       </div>
 
+      {/* Modal */}
       {selectedBook && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-5 sm:p-6 w-full max-w-md sm:max-w-lg relative">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => setSelectedBook(null)}>
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 relative" onClick={e => e.stopPropagation()}>
             <button
-              className="absolute top-3 left-3 text-xl sm:text-2xl z-50 hover:text-red-600 transition"
+              className="absolute -top-3 -right-3 text-2xl font-bold text-gray-700 hover:text-red-600 bg-white rounded-full w-9 h-9 flex items-center justify-center shadow-md hover:shadow-lg transition-all border-2 border-gray-200"
               onClick={() => setSelectedBook(null)}
-            >
-              ✖
-            </button>
+            >×</button>
 
-            <div className="relative">
-              <img
-                src={selectedBook.formats["image/jpeg"]}
-                className="rounded mb-4 w-full h-40 sm:h-90 object-cover mt-5"
-              />
+            <div className="mb-4 relative">
+              <div className="h-72 bg-gray-50 rounded-lg overflow-hidden shadow-md flex items-center justify-center p-3">
+                {selectedBook.cover_url ? (
+                  <img src={selectedBook.cover_url} alt="" className="max-w-full max-h-full object-contain" />
+                ) : (
+                  <div className={`h-full w-full flex flex-col items-center justify-center ${getStableColor(selectedBook.id)}`}>
+                    <span className="text-7xl mb-3">📖</span>
+                    <p className="text-xl font-bold px-4 text-center line-clamp-3">{selectedBook.title}</p>
+                  </div>
+                )}
+              </div>
+
               <button
-                id={`bookmark-icon-${selectedBook.id}`}
-                className="absolute top-2 right-2 text-white p-1 rounded-full bg-[#b0042b] hover:bg-[#8a0322] transition-transform"
-                onClick={() => toggleBookmark(selectedBook)}
+                onClick={(e) => { e.stopPropagation(); toggleBookmark(selectedBook); }}
+                className="absolute top-2 right-2 bg-[#b0042b] p-2 rounded-full shadow-md hover:scale-110 transition"
               >
                 {bookmarkedIds.includes(selectedBook.id) ? (
-                  <BookmarkCheck size={24} className="text-yellow-400" />
+                  <BookmarkCheck size={20} className="text-yellow-400" />
                 ) : (
-                  <Bookmark size={24} className="text-white" />
+                  <Bookmark size={20} className="text-white" />
                 )}
               </button>
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-bold text-center">{selectedBook.title}</h2>
-
-            <p className="text-gray-700 mb-1 text-sm sm:text-base text-center">
-              <strong>Author:</strong> {selectedBook.authors?.[0]?.name || "Unknown"}
-            </p>
-
-            <p className="text-yellow-500 text-2xl sm:text-3xl mb-3 text-center">
-              {ratings[selectedBook.id]}
-            </p>
+            <h2 className="text-xl font-bold text-center mb-1 line-clamp-2">{selectedBook.title}</h2>
+            <p className="text-center text-gray-600 text-sm mb-3">by {selectedBook.author}</p>
+            <p className="text-center text-2xl text-yellow-500 mb-4">{ratings[selectedBook.id] || "★★★★☆"}</p>
 
             <button
-              className="bg-[#b0042b] hover:bg-[#8a0322] text-white py-2 px-10 rounded-lg text-sm sm:text-base font-semibold mx-auto block"
-              onClick={() =>
-                navigate("/read", {
-                  state: {
-                    book: selectedBook,
-                    link:
-                      selectedBook.formats["text/plain"] ||
-                      selectedBook.formats["text/html"],
-                  },
-                })
-              }
+              onClick={() => navigate("/read", { state: { book: selectedBook } })}
+              className="w-full bg-[#b0042b] hover:bg-[#8a0322] text-white font-bold py-3 rounded-lg text-base transition"
             >
               Read Now
             </button>
@@ -250,14 +293,10 @@ const Library = () => {
         </div>
       )}
 
-      <style>
-        {`
-          .scale-up {
-            transform: scale(1.4);
-            transition: transform 0.3s ease-in-out;
-          }
-        `}
-      </style>
+      <style jsx>{`
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+      `}</style>
     </>
   );
 };
