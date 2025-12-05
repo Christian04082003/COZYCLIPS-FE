@@ -10,68 +10,152 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [notification, setNotification] = useState(null);
 
+  // Hardcoded quests (frontend only)
   const fetchQuests = async () => {
     const completedProgress = Number(localStorage.getItem("completedProgress")) || 0;
 
     const mockQuests = [
       {
-        id: 0,
+        id: "0",
         title: completedProgress >= 1 ? "New User Challenge (Claimable)" : "New User Challenge",
         description: "Complete your first book and get your starting coins!",
         currentProgress: completedProgress >= 1 ? 1 : 0,
         targetProgress: 1,
         reward: 250,
-        status: "ready_to_complete"
+        status: completedProgress >= 1 ? "ready_to_complete" : "in_progress"
       },
-      { id: 1, title: "Reading Marathon", description: "Read 5 books this month", currentProgress: 0, targetProgress: 5, reward: 100, status: "in_progress" },
-      { id: 2, title: "Genre Explorer", description: "Read books from 3 different genres", currentProgress: 0, targetProgress: 3, reward: 75, status: "in_progress" },
-      { id: 3, title: "Speed Reader", description: "Complete a book in one week", currentProgress: 0, targetProgress: 1, reward: 50, status: "in_progress" },
-      { id: 4, title: "Classic Literature Fan", description: "Read 2 classic literature books", currentProgress: 0, targetProgress: 2, reward: 120, status: "in_progress" },
-      { id: 5, title: "Weekend Sprint", description: "Read for 2 hours over the weekend", currentProgress: 0, targetProgress: 120, reward: 40, status: "in_progress" },
-      { id: 6, title: "Non-fiction Navigator", description: "Finish a non-fiction book", currentProgress: 0, targetProgress: 1, reward: 80, status: "in_progress" },
-      { id: 7, title: "Poetry Path", description: "Read 10 poems", currentProgress: 0, targetProgress: 10, reward: 60, status: "in_progress" },
-      { id: 8, title: "Daily Habit", description: "Read 15 minutes daily for 5 days", currentProgress: 0, targetProgress: 5, reward: 90, status: "in_progress" }
+      { id: "1", title: "Reading Marathon", description: "Read 5 books this month", currentProgress: 0, targetProgress: 5, reward: 100, status: "in_progress" },
+      { id: "2", title: "Genre Explorer", description: "Read books from 3 different genres", currentProgress: 0, targetProgress: 3, reward: 75, status: "in_progress" },
+      { id: "3", title: "Speed Reader", description: "Complete a book in one week", currentProgress: 0, targetProgress: 1, reward: 50, status: "in_progress" },
+      { id: "4", title: "Classic Literature Fan", description: "Read 2 classic literature books", currentProgress: 0, targetProgress: 2, reward: 120, status: "in_progress" },
+      { id: "5", title: "Weekend Sprint", description: "Read for 2 hours over the weekend", currentProgress: 0, targetProgress: 120, reward: 40, status: "in_progress" },
+      { id: "6", title: "Non-fiction Navigator", description: "Finish a non-fiction book", currentProgress: 0, targetProgress: 1, reward: 80, status: "in_progress" },
+      { id: "7", title: "Poetry Path", description: "Read 10 poems", currentProgress: 0, targetProgress: 10, reward: 60, status: "in_progress" },
+      { id: "8", title: "Daily Habit", description: "Read 15 minutes daily for 5 days", currentProgress: 0, targetProgress: 5, reward: 90, status: "in_progress" }
     ];
 
-    setQuests(mockQuests);
+    // Check localStorage for claimed quests
+    const claimedQuests = JSON.parse(localStorage.getItem("claimedQuests") || "[]");
+    
+    const updatedQuests = mockQuests.map(quest => {
+      if (claimedQuests.includes(quest.id)) {
+        return {
+          ...quest,
+          status: "completed",
+          title: quest.id === "0" ? "New User Challenge (Claimed)" : quest.title
+        };
+      }
+      return quest;
+    });
+
+    setQuests(updatedQuests);
   };
 
+  // Fetch coin balance from Firestore via backend
   const fetchCoinBalance = async () => {
-    const stored = localStorage.getItem("coins");
-    const startingBalance = stored ? parseInt(stored, 10) : 0;
-    setCoinBalance(startingBalance);
-    localStorage.setItem("coins", startingBalance);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/user/coins", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        console.error("Failed to fetch coins, defaulting to 0");
+        setCoinBalance(0);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        // Set coins to 0 if not present in backend
+        setCoinBalance(data.coins || 0);
+      } else {
+        setCoinBalance(0);
+      }
+    } catch (error) {
+      console.error("Error fetching coin balance:", error);
+      // Default to 0 coins if fetch fails
+      setCoinBalance(0);
+    }
   };
 
+  // Update coins in Firestore when claiming quest
   const completeQuest = async (id) => {
     setCompletingQuestId(id);
     const quest = quests.find((q) => q.id === id);
 
-    setQuests(
-      quests.map((q) =>
-        q.id === id ? { ...q, status: "completed", title: "New User Challenge (Claimed)" } : q
-      )
-    );
+    if (!quest || quest.status === "completed") {
+      setCompletingQuestId(null);
+      return;
+    }
 
-    const newBalance = coinBalance + quest.reward;
-    setCoinBalance(newBalance);
-    localStorage.setItem("coins", newBalance);
-    window.dispatchEvent(new Event("storage"));
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/user/add-coins", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          amount: quest.reward,
+          reason: `Quest completed: ${quest.title}`
+        })
+      });
 
-    setShowConfetti(true);
-    setTimeout(() => setShowConfetti(false), 3000);
+      if (!response.ok) {
+        throw new Error("Failed to add coins");
+      }
 
-    setNotification({ message: `You earned ${quest.reward} coins!`, type: "success" });
-    setTimeout(() => setNotification(null), 3000);
+      const data = await response.json();
+      
+      if (data.success) {
+        // Update local quest status
+        setQuests(prevQuests =>
+          prevQuests.map((q) =>
+            q.id === id ? { ...q, status: "completed", title: q.id === "0" ? "New User Challenge (Claimed)" : q.title } : q
+          )
+        );
 
-    setCompletingQuestId(null);
+        // Save claimed quest to localStorage
+        const claimedQuests = JSON.parse(localStorage.getItem("claimedQuests") || "[]");
+        claimedQuests.push(id);
+        localStorage.setItem("claimedQuests", JSON.stringify(claimedQuests));
+
+        // Update coin balance from backend response
+        setCoinBalance(data.newBalance || data.coins || coinBalance + quest.reward);
+
+        // Show success animations
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+
+        setNotification({ 
+          message: `You earned ${quest.reward} coins!`, 
+          type: "success" 
+        });
+        setTimeout(() => setNotification(null), 3000);
+      }
+    } catch (error) {
+      console.error("Error claiming quest:", error);
+      setNotification({ 
+        message: "Failed to claim reward. Please try again.", 
+        type: "error" 
+      });
+      setTimeout(() => setNotification(null), 3000);
+    } finally {
+      setCompletingQuestId(null);
+    }
   };
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      await fetchQuests();
-      await fetchCoinBalance();
+      fetchQuests(); // This is synchronous now
+      await fetchCoinBalance(); // Only this is async
       setLoading(false);
     };
     load();
@@ -178,12 +262,12 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
                     {quest.reward}
                   </span>
 
-                  {quest.status === "ready_to_complete" && quest.status !== "completed" && (
+                  {quest.status === "ready_to_complete" && (
                     <button
                       onClick={() => completeQuest(quest.id)}
                       disabled={completingQuestId === quest.id}
                       className="px-4 py-2 rounded-lg text-sm text-white bg-gradient-to-r from-yellow-600 to-red-600 
-                                 hover:from-yellow-700 hover:to-red-900"
+                                 hover:from-yellow-700 hover:to-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {completingQuestId === quest.id ? "Claiming..." : "Claim Reward"}
                     </button>

@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from "react";
+  import React, { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+const BASE_URL = "https://czc-eight.vercel.app";
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [hasTyped, setHasTyped] = useState(false);
   const [fadeState, setFadeState] = useState("enter");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -35,7 +38,7 @@ const Signup = () => {
     setTimeout(() => navigate("/login"), 600);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const { firstName, lastName, email, password } = formData;
 
@@ -50,15 +53,30 @@ const Signup = () => {
       return;
     }
 
-    setIsSuccess(true);
-
-    // ⭐ NEW LINE — This connects Signup → Dashboard
-    localStorage.setItem("signupData", JSON.stringify(formData));
+    setLoading(true);
+    try {
+      const username = `${firstName} ${lastName}`.trim();
+      const res = await fetch(`${BASE_URL}/api/user/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password, role: "student" }),
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        setIsSuccess(true);
+      } else {
+        alert(data?.message || "Failed to create account. Try again.");
+      }
+    } catch (err) {
+      alert("Failed to create account. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div
-      className={`min-h-screen flex items-center justify-center bg-[#f9f2ed] overflow-y-auto transition-all duration-700 ease-in-out ${
+      className={`min-h-screen flex items-center justify-center bg-white overflow-y-auto transition-all duration-700 ease-in-out ${
         fadeState === "visible"
           ? "opacity-100 translate-y-0 scale-100"
           : fadeState === "enter"
@@ -67,7 +85,6 @@ const Signup = () => {
       }`}
     >
       <div className="w-[95%] md:w-[92%] lg:w-[88%] xl:w-[85%] min-h-[75vh] md:min-h-[70vh] bg-[#F3EBE2] rounded-none md:rounded-[20px] overflow-hidden shadow-2xl flex flex-col-reverse md:flex-row relative">
-        
         <div
           className="flex-1 flex flex-col justify-center items-center text-white p-8 sm:p-10 md:p-14 lg:p-16 bg-cover bg-center text-center h-[45vh] sm:h-[50vh] md:h-auto"
           style={{ backgroundImage: "url('/src/assets/Side-1.png')" }}
@@ -170,7 +187,7 @@ const Signup = () => {
                   px-6 py-2 rounded-md hover:bg-[#a0002a] hover:scale-105 
                   transition-all duration-500 ease-in-out text-base font-semibold min-w-[120px]"
                 >
-                  SIGN UP
+                  {loading ? "Creating..." : "SIGN UP"}
                 </button>
               </div>
             </form>
