@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+const BASE_URL = "https://czc-eight.vercel.app";
+
 const ForgotPassword = () => {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
@@ -9,6 +11,7 @@ const ForgotPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fadeState, setFadeState] = useState("enter");
   const [loading, setLoading] = useState(false);
+  const [debugCode, setDebugCode] = useState(null); 
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,9 +23,22 @@ const ForgotPassword = () => {
     if (!email) return alert("Please enter your email.");
     setLoading(true);
     try {
-      alert(`An OTP has been sent to ${email}`);
-      setStep(2);
-    } catch {
+      const res = await fetch(`${BASE_URL}/api/user/forgot-password/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        if (data.data && data.data.code) {
+          setDebugCode(String(data.data.code));
+        }
+        alert(`An OTP has been sent to ${email}`);
+        setStep(2);
+      } else {
+        alert(data?.message || "Failed to send OTP. Please try again.");
+      }
+    } catch (err) {
       alert("Failed to send OTP. Please try again.");
     } finally {
       setLoading(false);
@@ -34,11 +50,20 @@ const ForgotPassword = () => {
     if (!otp) return alert("Please enter the OTP.");
     setLoading(true);
     try {
-      if (otp === "123456") {
+      // If debug code is available, validate before moving to reset step
+      if (debugCode) {
+        if (String(otp) !== String(debugCode)) {
+          alert("Invalid OTP. Please try again.");
+          setLoading(false);
+          return;
+        }
         setStep(3);
       } else {
-        alert("Invalid OTP. Please try again.");
+        // If no debug code provided by backend, proceed to next step (final reset will validate)
+        setStep(3);
       }
+    } catch (err) {
+      alert("OTP verification failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -52,8 +77,20 @@ const ForgotPassword = () => {
     }
     setLoading(true);
     try {
-      alert("Your password has been reset successfully!");
-      navigate("/login");
+      const res = await fetch(`${BASE_URL}/api/user/forgot-password/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: otp, newPassword }),
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        alert("Your password has been reset successfully!");
+        navigate("/login");
+      } else {
+        alert(data?.message || "Failed to reset password. Please try again.");
+      }
+    } catch (err) {
+      alert("Failed to reset password. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -61,7 +98,7 @@ const ForgotPassword = () => {
 
   return (
     <div
-      className={`min-h-screen flex items-center justify-center bg-[#f9f2ed] transition-all duration-700 ease-in-out ${
+      className={`min-h-screen flex items-center justify-center bg-white transition-all duration-700 ease-in-out ${
         fadeState === "visible"
           ? "opacity-100 translate-y-0 scale-100"
           : fadeState === "enter"
@@ -70,8 +107,9 @@ const ForgotPassword = () => {
       }`}
     >
       <div
-        className="w-[90%] sm:w-[85%] md:w-[80%] lg:w-[70%] xl:w-[60%] bg-[#f9f2ed]
-        rounded-[20px] shadow-2xl flex flex-col md:flex-row overflow-hidden min-h-[80vh] transition-all duration-500"
+        className="w-[90%] sm:w-[85%] md:w-[80%] lg:w-[70%] xl:w-[60%] bg-[#F3EBE2]
+        rounded-[20px] shadow-2xl flex flex-col md:flex-row overflow-hidden
+        min-h-[80vh] transition-all duration-500"
       >
         <div
           className="flex-1 flex flex-col justify-center items-center bg-[#f9f2ed]
