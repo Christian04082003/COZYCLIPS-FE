@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+const BASE_URL = "https://czc-eight.vercel.app";
+
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [hasTyped, setHasTyped] = useState(false);
@@ -29,25 +31,22 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch("/api/login", {
+      const res = await fetch(`${BASE_URL}/api/user/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, role: "student" }),
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // ⭐ THIS LINE CONNECTS THE LOGIN TO THE DASHBOARD
-        localStorage.setItem("user", JSON.stringify(data.user));
-
+      const data = await res.json();
+      if (data && data.success) {
+        try {
+          localStorage.setItem("czc_auth", JSON.stringify(data.data || {}));
+        } catch (err) { }
         navigate("/dashboardlayout");
       } else {
-        alert(data.message || "Invalid email or password.");
+        alert(data?.message || "Invalid email or password.");
       }
     } catch (err) {
-      alert("Login failed. Please try again.");
-      console.error(err);
+      alert("Failed to login. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -55,7 +54,7 @@ const Login = () => {
 
   return (
     <div
-      className={`min-h-screen flex items-center justify-center bg-[#f9f2ed] overflow-y-auto transition-all duration-700 ease-in-out ${
+      className={`min-h-screen flex items-center justify-center bg-white overflow-y-auto transition-all duration-700 ease-in-out ${
         fadeState === "visible"
           ? "opacity-100 translate-y-0 scale-100"
           : fadeState === "enter"
@@ -63,17 +62,18 @@ const Login = () => {
           : "opacity-0 -translate-y-6 scale-95"
       }`}
     >
-      <div className="w-[95%] md:w-[92%] lg:w-[88%] xl:w-[85%] min-h-[100vh] md:min-h-[80vh] bg-[#f9f2ed] rounded-none md:rounded-[20px] overflow-hidden shadow-2xl flex flex-col md:flex-row">
+      <div
+        className="w-[95%] md:w-[92%] lg:w-[88%] xl:w-[85%] min-h-[100vh] md:min-h-[80vh] bg-[#F3EBE2] 
+        rounded-none md:rounded-[20px] overflow-hidden shadow-2xl flex flex-col md:flex-row"
+      >
+
         <div className="order-1 flex-1 flex flex-col items-center bg-[#f9f2ed] p-6 sm:p-10 md:p-14 lg:p-16 overflow-y-auto">
           <div className="w-full max-w-lg transition-all duration-300">
             <h2 className="text-3xl sm:text-4xl font-bold text-center mb-8 tracking-widest py-10">
               LOG IN
             </h2>
 
-            <form
-              onSubmit={handleLogin}
-              className="space-y-7 sm:space-y-8 text-lg sm:text-xl"
-            >
+            <form onSubmit={handleLogin} className="space-y-7 sm:space-y-8 text-lg sm:text-xl">
               <div>
                 <label className="block text-gray-700 mb-2 font-semibold text-xl sm:text-2xl">
                   Email
@@ -117,9 +117,11 @@ const Login = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-[#870022] border-2 border-[#AA9B9B] shadow-md shadow-gray-400/50 text-white px-6 py-2 rounded-md hover:bg-[#a0002a] hover:scale-105 transition-all duration-500 ease-in-out text-base font-semibold min-w-[120px]"
+                  className="bg-[#870022] border-2 border-[#AA9B9B] shadow-md shadow-gray-400/50 text-white 
+                  px-6 py-2 rounded-md hover:bg-[#a0002a] hover:scale-105 
+                  transition-all duration-500 ease-in-out text-base font-semibold min-w-[120px]"
                 >
-                  {loading ? "LOGGING IN..." : "LOG IN"}
+                  {loading ? "Logging in..." : "LOG IN"}
                 </button>
 
                 <button
@@ -139,12 +141,14 @@ const Login = () => {
           style={{ backgroundImage: "url('/src/assets/Side-1.png')" }}
         >
           <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold leading-relaxed max-w-lg drop-shadow-lg mb-6">
-            New here? <br /> Sign up to discover and enjoy personalized reading
-            with <span className="font-bold">Cozy Clips</span>.
+            New here? <br /> Sign up to discover and enjoy personalized reading with{" "}
+            <span className="font-bold">Cozy Clips</span>.
           </p>
           <button
             onClick={() => handleNavigate("/signup")}
-            className="bg-[#870022] border-2 border-[#AA9B9B] shadow-md shadow-gray-400/70 text-white px-4 py-1.5 rounded-md hover:bg-[#a0002a] hover:scale-105 transition-all duration-500 ease-in-out text-sm font-semibold min-w-[100px]"
+            className="bg-[#870022] border-2 border-[#AA9B9B] shadow-md shadow-gray-400/70 text-white 
+            px-4 py-1.5 rounded-md hover:bg-[#a0002a] hover:scale-105 
+            transition-all duration-500 ease-in-out text-sm font-semibold min-w-[100px]"
           >
             SIGN UP
           </button>

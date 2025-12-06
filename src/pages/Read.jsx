@@ -37,18 +37,23 @@ const Read = () => {
   }, []);
 
   useEffect(() => {
-    if (!link) return;
+    if (!book || !book.id) return;
     const loadText = async () => {
       try {
-        const res = await fetch("http://localhost:4000/fetch-book", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: link }),
-        });
+        const BACKEND_URL = `https://czc-eight.vercel.app/api/stories/${book.id}`;
+        const res = await fetch(BACKEND_URL);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
         const data = await res.json();
-        if (!data.text) throw new Error("No text returned");
+        
+        if (!data.story || !data.story.content) {
+          throw new Error("No content returned");
+        }
 
-        let plainText = data.text
+        let plainText = data.story.content
           .replace(/<[^>]*>/g, " ")
           .replace(/\{[^}]*\}/g, " ")
           .replace(/\[.*?\]/g, " ")
@@ -61,50 +66,56 @@ const Read = () => {
           .trim();
 
         if (isMobile) {
+          // Mobile: Simple word-based chunks
           const words = plainText.split(/\s+/);
           const sections = [];
-          let current = "";
-          const wordsPerSection = 120;
-          words.forEach((word) => {
-            current += word + " ";
-            if (current.split(" ").length >= wordsPerSection) {
-              sections.push(current.trim());
-              current = "";
-            }
-          });
-          if (current.trim()) sections.push(current.trim());
+          const wordsPerSection = 200;
+          
+          for (let i = 0; i < words.length; i += wordsPerSection) {
+            const chunk = words.slice(i, i + wordsPerSection).join(" ");
+            sections.push(chunk);
+          }
           setPages(sections);
         } else {
-          const containerHeight = containerRef.current?.clientHeight || 600;
-          const lineHeight = 35;
-          const usableHeight = containerHeight - 120;
-          const linesPerPage = Math.floor(usableHeight / lineHeight);
-          const words = plainText.split(/\s+/);
+          // Desktop: Fixed character limit per page with sentence boundaries
+          const sentences = plainText.match(/[^.!?]+[.!?]+/g) || [plainText];
           const output = [];
           let currentPage = "";
-          const approxWordsPerLine = 12;
-          words.forEach((word) => {
-            currentPage += word + " ";
-            if ((currentPage.split(" ").length / approxWordsPerLine) >= linesPerPage) {
+          const maxCharsPerPage = 1800; // Conservative limit to prevent overflow
+          
+          for (let i = 0; i < sentences.length; i++) {
+            const sentence = sentences[i].trim();
+            
+            // If adding this sentence exceeds the limit and we have content, start new page
+            if (currentPage.length > 0 && (currentPage.length + sentence.length + 1) > maxCharsPerPage) {
               output.push(currentPage.trim());
-              currentPage = "";
+              currentPage = sentence + " ";
+            } else {
+              currentPage += sentence + " ";
             }
-          });
-          if (currentPage.trim()) output.push(currentPage.trim());
+          }
+          
+          // Add any remaining content
+          if (currentPage.trim()) {
+            output.push(currentPage.trim());
+          }
+          
           setPages(output);
         }
-      } catch {
-        setPages(["Failed to load content."]);
+      } catch (error) {
+        console.error("Failed to load book content:", error);
+        setPages(["Failed to load content. Please try again later."]);
       }
     };
     loadText();
-  }, [link, isMobile]);
+  }, [book, isMobile]);
 
   if (!book) return <p className="text-center mt-10">No book selected.</p>;
 
-  const leftPage = pages[pageIndex * 2];
-  const rightPage = pages[pageIndex * 2 + 1];
-  const totalDoublePages = Math.ceil(pages.length / 2);
+  // Desktop shows 2 pages at once (left and right)
+  const leftPage = pageIndex === 0 ? null : pages[(pageIndex - 1) * 2 + 1];
+  const rightPage = pageIndex === 0 ? pages[0] : pages[(pageIndex - 1) * 2 + 2];
+  const totalDoublePages = Math.ceil((pages.length + 1) / 2); // +1 for title page
 
   const handleScroll = () => {
     setShowPageIndicator(true);
@@ -136,6 +147,8 @@ const Read = () => {
     navigate("/dashboardlayout/quiz-game", { state: { book } });
   };
 
+  const isLastPage = pageIndex === totalDoublePages - 1 && !rightPage;
+
   return (
     <div
       className={`w-full min-h-screen bg-[#f3ede3] flex flex-col items-center ${
@@ -146,132 +159,161 @@ const Read = () => {
     >
       <div
         className={`relative flex ${
-          isMobile ? "flex-col w-full h-screen overflow-y-auto" : "w-[calc(100%-70px)] h-[calc(100vh-60px)]"
+          isMobile ? "flex-col w-full h-screen overflow-y-auto snap-y snap-mandatory" : "w-[calc(100%-70px)] h-[calc(100vh-60px)]"
         } bg-white rounded-[24px] shadow-2xl overflow-hidden`}
         style={{ perspective: "1500px" }}
       >
         {!isMobile && (
           <>
+            {/* Left Page */}
             <div
-              className="flex-1 px-[40px] py-5 text-lg font-serif font-normal text-left break-words relative"
-              style={{ lineHeight: "38px" }}
+              className="flex-1 px-[50px] py-[50px] text-[17px] font-serif font-normal text-left break-words relative flex items-start"
+              style={{ lineHeight: "32px", overflow: "hidden" }}
             >
               {pageIndex === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <h1 className="text-4xl font-bold mb-2">{book.title}</h1>
-                  <h3 className="text-xl font-semibold">{book.authors?.[0]?.name || "Unknown Author"}</h3>
+                <div className="flex flex-col items-center justify-center h-full w-full text-center">
+                  <h1 className="text-4xl font-bold mb-4">{book.title}</h1>
+                  <h3 className="text-xl font-semibold text-gray-700">{book.authors?.[0]?.name || "Unknown Author"}</h3>
+                </div>
+              ) : leftPage ? (
+                <div className="whitespace-pre-wrap w-full">
+                  {leftPage}
                 </div>
               ) : (
-                <p className="whitespace-pre-wrap mt-[60px] mb-[60px]">{leftPage}</p>
+                <div className="w-full"></div>
               )}
             </div>
 
-            <div className="w-2 bg-gray-300"></div>
+            {/* Center Divider */}
+            <div className="w-[2px] bg-gradient-to-b from-gray-200 via-gray-300 to-gray-200"></div>
 
+            {/* Right Page */}
             <div
-              className="flex-1 px-[40px] py-5 text-lg font-serif font-normal text-left break-words relative"
-              style={{ lineHeight: "38px" }}
+              className="flex-1 px-[50px] py-[50px] text-[17px] font-serif font-normal text-left break-words relative flex items-start"
+              style={{ lineHeight: "32px", overflow: "hidden" }}
             >
-              {pageIndex === totalDoublePages - 1 ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/10 backdrop-blur-sm rounded-[24px] p-6">
-                  <p className="text-xl font-semibold mb-4 text-center">Ready to test your knowledge?</p>
-                  <button
-                    onClick={handleTakeQuiz}
-                    className="bg-[#b0042b] text-white px-4 py-2 rounded shadow hover:bg-[#8a0322] transition text-sm"
-                  >
-                    Take Quiz
-                  </button>
+              {isLastPage ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-black/5 to-black/10 backdrop-blur-sm rounded-r-[24px] p-6">
+                  <div className="bg-white/90 rounded-lg p-8 shadow-xl text-center">
+                    <h2 className="text-2xl font-bold mb-4 text-gray-800">Congratulations! 🎉</h2>
+                    <p className="text-lg mb-6 text-gray-700">You've finished reading this book.</p>
+                    <p className="text-base mb-6 font-semibold text-gray-800">Ready to test your knowledge?</p>
+                    <button
+                      onClick={handleTakeQuiz}
+                      className="bg-[#b0042b] text-white px-6 py-3 rounded-lg shadow-lg hover:bg-[#8a0322] transition-all transform hover:scale-105"
+                    >
+                      Take Quiz
+                    </button>
+                  </div>
+                </div>
+              ) : rightPage ? (
+                <div className="whitespace-pre-wrap w-full">
+                  {rightPage}
                 </div>
               ) : (
-                <>
-                  {rightPage ? (
-                    <p className="whitespace-pre-wrap mt-[60px] mb-[60px]">{rightPage}</p>
-                  ) : (
-                    <p className="text-gray-500 text-left mt-[30px] mb-[30px]">No content</p>
-                  )}
-                </>
+                <div className="w-full"></div>
               )}
             </div>
 
-            <div className="absolute bottom-10 w-full flex justify-between px-100">
-              {pageIndex > 0 ? (
-                <button
-                  onClick={() => setPageIndex(pageIndex - 1)}
-                  className="bg-[#b0042b] text-white px-6 py-2 rounded shadow hover:bg-[#8a0322] transition"
-                >
-                  Previous
-                </button>
-              ) : (
-                <div className="w-[94px]"></div>
-              )}
-
-              {pageIndex !== totalDoublePages - 1 && (
-                <button
-                  onClick={() => setPageIndex(pageIndex + 1)}
-                  className="bg-[#b0042b] text-white px-6 py-2 rounded shadow hover:bg-[#8a0322] transition"
-                >
-                  Next
-                </button>
-              )}
+            {/* Navigation Buttons */}
+            <div className="absolute bottom-8 left-[50px] pointer-events-none">
+              <div className="pointer-events-auto">
+                {pageIndex > 0 && (
+                  <button
+                    onClick={() => setPageIndex(pageIndex - 1)}
+                    className="bg-[#b0042b] text-white px-6 py-2.5 rounded-lg shadow-lg hover:bg-[#8a0322] transition-all transform hover:scale-105 font-semibold"
+                  >
+                    ← Previous
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="absolute bottom-4 right-6 text-gray-700 font-semibold cursor-pointer">
-              {editingPage ? (
-                <input
-                  value={pageInput}
-                  onChange={(e) => setPageInput(e.target.value)}
-                  onKeyDown={handlePageInputKeyDown}
-                  onBlur={() => setEditingPage(false)}
-                  autoFocus
-                  className="w-16 text-center border border-gray-400 rounded"
-                />
-              ) : (
-                <span onClick={handlePageNumberClick}>
-                  Page {pageIndex + 1} / {totalDoublePages}
-                </span>
-              )}
+            {/* Page Number - Always Centered */}
+            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 pointer-events-auto">
+              <div className="text-gray-600 font-semibold text-sm cursor-pointer select-none">
+                {editingPage ? (
+                  <input
+                    value={pageInput}
+                    onChange={(e) => setPageInput(e.target.value)}
+                    onKeyDown={handlePageInputKeyDown}
+                    onBlur={() => setEditingPage(false)}
+                    autoFocus
+                    className="w-20 text-center border border-gray-400 rounded px-2 py-1"
+                  />
+                ) : (
+                  <span onClick={handlePageNumberClick} className="hover:text-[#b0042b] transition">
+                    Page {pageIndex + 1} / {totalDoublePages}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="absolute bottom-8 right-[50px] pointer-events-none">
+              <div className="pointer-events-auto">
+                {pageIndex < totalDoublePages - 1 && (
+                  <button
+                    onClick={() => setPageIndex(pageIndex + 1)}
+                    className="bg-[#b0042b] text-white px-6 py-2.5 rounded-lg shadow-lg hover:bg-[#8a0322] transition-all transform hover:scale-105 font-semibold"
+                  >
+                    Next →
+                  </button>
+                )}
+              </div>
             </div>
           </>
         )}
 
+        {/* Mobile View */}
         {isMobile && (
           <>
-            <div className="snap-start w-full px-4 py-4 flex flex-col justify-center text-center">
-              <h1 className="text-3xl font-bold mb-2">{book.title}</h1>
-              <h3 className="text-lg font-semibold">{book.authors?.[0]?.name || "Unknown Author"}</h3>
+            {/* Title Page */}
+            <div className="snap-start w-full min-h-screen px-6 py-8 flex flex-col justify-center items-center text-center bg-gradient-to-br from-gray-50 to-white">
+              <h1 className="text-3xl font-bold mb-4">{book.title}</h1>
+              <h3 className="text-lg font-semibold text-gray-600">{book.authors?.[0]?.name || "Unknown Author"}</h3>
+              <p className="mt-8 text-sm text-gray-500">Swipe up to start reading</p>
             </div>
 
+            {/* Content Pages */}
             {pages.map((section, idx) => (
               <div
                 key={idx}
-                className="snap-start w-full px-4 py-4 text-base font-serif break-words flex flex-col justify-start relative bg-white m-0"
+                className="snap-start w-full min-h-screen px-5 py-8 text-base font-serif break-words flex flex-col justify-start relative bg-white"
                 style={{ lineHeight: "28px" }}
               >
                 <p className="whitespace-pre-wrap">{section}</p>
                 {idx === pages.length - 1 && (
-                  <div className="mt-8 flex flex-col items-center">
-                    <p className="text-base mb-2 font-semibold text-center">Ready to test your knowledge?</p>
-                    <button
-                      onClick={handleTakeQuiz}
-                      className="bg-[#b0042b] text-white px-4 py-2 rounded shadow hover:bg-[#8a0322] transition text-sm"
-                    >
-                      Take Quiz
-                    </button>
+                  <div className="mt-12 flex flex-col items-center pb-8">
+                    <div className="bg-gray-50 rounded-lg p-6 shadow-md text-center">
+                      <h3 className="text-xl font-bold mb-3">Congratulations! 🎉</h3>
+                      <p className="text-sm mb-4 text-gray-700">You've finished reading this book.</p>
+                      <p className="text-base mb-4 font-semibold">Ready to test your knowledge?</p>
+                      <button
+                        onClick={handleTakeQuiz}
+                        className="bg-[#b0042b] text-white px-6 py-3 rounded-lg shadow-lg hover:bg-[#8a0322] transition-all"
+                      >
+                        Take Quiz
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
             ))}
 
-            {showPageIndicator && (
-              <div className="absolute bottom-4 w-full flex justify-center space-x-2">
-                {pages.map((_, idx) => (
-                  <div
-                    key={idx}
-                    className={`h-2 w-2 rounded-full bg-gray-500 ${
-                      pageIndex === idx ? "opacity-100" : "opacity-40"
-                    }`}
-                  ></div>
-                ))}
+            {/* Page Indicator Dots */}
+            {showPageIndicator && pages.length > 0 && (
+              <div className="fixed bottom-6 w-full flex justify-center space-x-2 z-10 pointer-events-none">
+                <div className="bg-black/20 backdrop-blur-sm rounded-full px-3 py-2">
+                  {pages.slice(0, 10).map((_, idx) => (
+                    <span
+                      key={idx}
+                      className={`inline-block h-2 w-2 rounded-full mx-1 transition-all ${
+                        pageIndex === idx ? "bg-[#b0042b] w-4" : "bg-white/60"
+                      }`}
+                    ></span>
+                  ))}
+                  {pages.length > 10 && <span className="text-white text-xs ml-2">+{pages.length - 10}</span>}
+                </div>
               </div>
             )}
           </>
