@@ -117,7 +117,10 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
     setCompletingQuestId(id);
     const quest = quests.find((q) => q.id === id);
 
+    console.log("Attempting to complete quest:", quest);
+
     if (!quest || quest.status === "completed") {
+      console.error("Quest already completed or not found:", quest);
       setCompletingQuestId(null);
       return;
     }
