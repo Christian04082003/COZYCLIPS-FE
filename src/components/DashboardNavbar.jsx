@@ -36,6 +36,36 @@ const DashboardNavbar = ({ profileImage }) => {
   useEffect(() => {
     const storedCoins = localStorage.getItem("coins");
     if (storedCoins) setCoins(parseInt(storedCoins, 10));
+    
+    // Also fetch coins from backend/Firestore
+    const fetchCoinsFromBackend = async () => {
+      try {
+        const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+        const token = authData.token;
+        
+        if (token) {
+          const response = await fetch("https://czc-eight.vercel.app/api/user/coins", {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.coins !== undefined) {
+              setCoins(data.coins);
+              localStorage.setItem("coins", String(data.coins));
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching coins from backend:", error);
+      }
+    };
+    
+    fetchCoinsFromBackend();
   }, []);
 
   useEffect(() => {

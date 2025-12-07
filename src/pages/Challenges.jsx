@@ -76,10 +76,11 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
     }
   };
 
-  // Fetch coin balance from quest data
+  // Fetch coin balance from backend
   const fetchCoinBalance = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+      const token = authData.token;
       
       if (!token) {
         console.error("No authentication token found");
@@ -87,16 +88,24 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
         return;
       }
 
-      // Get coins from user document via the quest endpoint or calculate from completed quests
-      // For now, we'll calculate it from completed quests in the state
-      if (quests.length > 0) {
-        const completedRewards = quests
-          .filter(q => q.status === "completed")
-          .reduce((total, q) => total + q.reward, 0);
-        setCoinBalance(completedRewards);
+      // Fetch actual coin balance from backend
+      const response = await fetch("https://czc-eight.vercel.app/api/user/coins", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.coins !== undefined) {
+          setCoinBalance(data.coins);
+          localStorage.setItem("coins", String(data.coins));
+        }
       }
     } catch (error) {
-      console.error("Error calculating coin balance:", error);
+      console.error("Error fetching coin balance:", error);
       setCoinBalance(0);
     }
   };
@@ -151,6 +160,11 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
         // Update coin balance from backend response
         const newBalance = data.newCoins || coinBalance + quest.reward;
         setCoinBalance(newBalance);
+        
+        // Update localStorage coins to sync with navbar
+        localStorage.setItem("coins", String(newBalance));
+        // Trigger storage event to notify navbar
+        window.dispatchEvent(new Event("storage"));
 
         // Show success animations
         setShowConfetti(true);
@@ -185,7 +199,7 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
     load();
   }, []);
 
-  // Update coin balance when quests change
+  // Fetch coin balance when component mounts and when quests change
   useEffect(() => {
     fetchCoinBalance();
   }, [quests]);
