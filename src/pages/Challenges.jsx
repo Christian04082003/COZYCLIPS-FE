@@ -295,7 +295,7 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
                   <p className="text-gray-600 mb-2 text-sm">{quest.description}</p>
 
                   <p className="text-sm text-gray-700 mb-1">
-                    Progress: <b>{quest.currentProgress}/{quest.targetProgress}</b>
+                    Progress: <b>{quest.currentProgress !== undefined && quest.targetProgress !== undefined ? `${quest.currentProgress}/${quest.targetProgress}` : "Loading..."}</b>
                   </p>
 
                   <div className="w-full h-3 bg-blue-200 rounded-full progress-stroke mb-3">
@@ -330,7 +330,7 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
 
                   {quest.status === "in_progress" && (
                     <p className="text-gray-600 font-semibold text-sm">
-                      Progress: {quest.currentProgress}/{quest.targetProgress}
+                      Progress: {quest.currentProgress !== undefined && quest.targetProgress !== undefined ? `${quest.currentProgress}/${quest.targetProgress}` : "Loading..."}
                     </p>
                   )}
 
