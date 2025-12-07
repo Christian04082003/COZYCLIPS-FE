@@ -178,7 +178,14 @@ const ProfileSettings = () => {
 
     setErrorRequired(false);
 
+    // Parse full name into first and last name
+    const nameParts = fullName.trim().split(/\s+/);
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ") || "";
+
     localStorage.setItem("fullName", fullName);
+    localStorage.setItem("firstName", firstName);
+    localStorage.setItem("lastName", lastName);
     localStorage.setItem("username", username);
 
     setSuccess("Changes saved successfully!");

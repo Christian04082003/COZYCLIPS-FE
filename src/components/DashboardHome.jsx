@@ -21,7 +21,8 @@ const DashboardHome = () => {
   const [profileImage, setProfileImage] = useState(localStorage.getItem("profileImage") || null);
 
   const [userData, setUserData] = useState({
-    firstName: localStorage.getItem("username") || "User",
+    firstName: localStorage.getItem("firstName") || "User",
+    lastName: localStorage.getItem("lastName") || "Student",
     email: localStorage.getItem("email") || "user@email.com",
   });
 
@@ -36,50 +37,153 @@ const DashboardHome = () => {
 
   const [ratings, setRatings] = useState({});
   const [rank, setRank] = useState(JSON.parse(localStorage.getItem("rankData")) || { tier: "Bronze", stage: 1 });
+  const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
 
+  // Helper function to get auth token
+  const getAuthToken = () => {
+    let token = null;
+    const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+    token = authData.token;
+    
+    if (!token && authData) {
+      token = authData;
+    }
+    if (!token) {
+      token = localStorage.getItem("token");
+    }
+    
+    return token;
+  };
+
+  // Fetch user data from backend/Firestore
+  const fetchUserData = async () => {
+    try {
+      const token = getAuthToken();
+      
+      if (!token) {
+        console.error("No authentication token found");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Fetching user data from backend...");
+      const response = await fetch("https://czc-eight.vercel.app/api/user/profile", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("User data from backend:", data);
+        
+        if (data.success && data.user) {
+          const user = data.user;
+          
+          // Update userData state
+          setUserData({
+            firstName: user.firstName || user.firstname || "User",
+            lastName: user.lastName || user.lastname || "Student",
+            email: user.email || "user@email.com"
+          });
+
+          // Save to localStorage
+          localStorage.setItem("firstName", user.firstName || user.firstname || "User");
+          localStorage.setItem("lastName", user.lastName || user.lastname || "Student");
+          localStorage.setItem("email", user.email || "user@email.com");
+          
+          // Optionally save full name
+          if (user.firstName && user.lastName) {
+            localStorage.setItem("fullName", `${user.firstName} ${user.lastName}`);
+          }
+
+          // Update profile image if available
+          if (user.profileImage) {
+            setProfileImage(user.profileImage);
+            localStorage.setItem("profileImage", user.profileImage);
+          }
+
+          // Update level progress if available
+          if (user.levelProgress !== undefined) {
+            setLevelProgress(user.levelProgress);
+            localStorage.setItem("levelProgress", user.levelProgress);
+          }
+
+          // Update completed progress if available
+          if (user.completedProgress !== undefined) {
+            setCompletedProgress(user.completedProgress);
+            localStorage.setItem("completedProgress", user.completedProgress);
+          }
+
+          // Update rank if available
+          if (user.rank) {
+            setRank(user.rank);
+            localStorage.setItem("rankData", JSON.stringify(user.rank));
+          }
+        }
+      } else {
+        console.error("Failed to fetch user data:", response.status);
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial data load
   useEffect(() => {
+    // First, try to load from localStorage for instant display
     const savedImage = localStorage.getItem("profileImage");
     if (savedImage) setProfileImage(savedImage);
 
-    const savedUsername = localStorage.getItem("username");
+    const savedFirstName = localStorage.getItem("firstName");
+    const savedLastName = localStorage.getItem("lastName");
     const savedEmail = localStorage.getItem("email");
-    if (savedUsername || savedEmail) {
-      setUserData((u) => ({ 
-        ...u, 
-        firstName: savedUsername || u.firstName,
-        email: savedEmail || u.email
-      }));
+    
+    if (savedFirstName || savedLastName || savedEmail) {
+      setUserData({
+        firstName: savedFirstName || "User",
+        lastName: savedLastName || "Student",
+        email: savedEmail || "user@email.com"
+      });
     }
 
-    // Also fetch from auth data to ensure we have the most recent email
+    // Also check auth data
     try {
       const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
       if (authData.user && authData.user.email) {
-        setUserData((u) => ({ ...u, email: authData.user.email }));
-        localStorage.setItem("email", authData.user.email);
+        setUserData((prev) => ({ ...prev, email: authData.user.email }));
       }
     } catch (error) {
-      console.error("Error fetching email from auth data:", error);
+      console.error("Error parsing auth data:", error);
     }
-  }, []);  // --- START: Updated useEffect hook for fetching suggested books from the backend ---
-  useEffect(() => {
-    const fetchSuggestedBooks = async () => {
-      try {
-        const BACKEND_URL = "https://czc-eight.vercel.app/api/library/stories";
+
+    // Then fetch fresh data from backend
+    fetchUserData();
+  }, []);
+
+  // Fetch suggested books from backend
+  useEffect(() => {
+    const fetchSuggestedBooks = async () => {
+      try {
+        const BACKEND_URL = "https://czc-eight.vercel.app/api/library/stories";
         
         // Request 12 books with a random seed to get a fresh, shuffled set
         const randomSeed = Math.floor(Math.random() * 10000);
-        const requestUrl = `${BACKEND_URL}?limit=12&seed=${randomSeed}`;
+        const requestUrl = `${BACKEND_URL}?limit=12&seed=${randomSeed}`;
 
-        const response = await fetch(requestUrl);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        
-        const data = await response.json();
-        
+        const response = await fetch(requestUrl);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const data = await response.json();
+        
         // Safely access the array
-        const bookDataArray = Array.isArray(data.books) ? data.books : (Array.isArray(data) ? data : []); 
+        const bookDataArray = Array.isArray(data.books) ? data.books : (Array.isArray(data) ? data : []); 
         
         // Map and prepare books
         let books = bookDataArray.map((book) => {
@@ -103,281 +207,290 @@ const DashboardHome = () => {
 
         // Ensure exactly 12 books are used (if available) and shuffle client-side for extra randomness
         books = shuffleArray(books).slice(0, 12);
-        setSuggested(books);
-        
-        // Set random ratings (1 to 5)
-        const initialRatings = {};
-        books.forEach((book) => {
-          initialRatings[book.id] = Math.floor(Math.random() * 5) + 1;
-        });
-        setRatings(initialRatings);
+        setSuggested(books);
+        
+        // Set random ratings (1 to 5)
+        const initialRatings = {};
+        books.forEach((book) => {
+          initialRatings[book.id] = Math.floor(Math.random() * 5) + 1;
+        });
+        setRatings(initialRatings);
 
-      } catch (error) {
-        console.error("Failed to fetch suggested books from backend:", error);
-      }
-    };
+      } catch (error) {
+        console.error("Failed to fetch suggested books from backend:", error);
+      }
+    };
     
-    fetchSuggestedBooks();
-  }, []);
-  // --- END: Updated useEffect hook ---
+    fetchSuggestedBooks();
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem("levelProgress", levelProgress);
-    window.dispatchEvent(new Event("progressUpdate"));
-  }, [levelProgress]);
+  useEffect(() => {
+    localStorage.setItem("levelProgress", levelProgress);
+    window.dispatchEvent(new Event("progressUpdate"));
+  }, [levelProgress]);
 
-  useEffect(() => {
-    localStorage.setItem("completedProgress", completedProgress);
-    window.dispatchEvent(new Event("progressUpdate"));
-  }, [completedProgress]);
+  useEffect(() => {
+    localStorage.setItem("completedProgress", completedProgress);
+    window.dispatchEvent(new Event("progressUpdate"));
+  }, [completedProgress]);
 
-  useEffect(() => {
-    const start = localStorage.getItem("readingStartTime");
-    if (!start) return;
+  useEffect(() => {
+    const start = localStorage.getItem("readingStartTime");
+    if (!start) return;
 
-    const now = Date.now();
-    const minutes = Math.floor((now - Number(start)) / 60000);
+    const now = Date.now();
+    const minutes = Math.floor((now - Number(start)) / 60000);
 
-    localStorage.removeItem("readingStartTime");
+    localStorage.removeItem("readingStartTime");
 
-    if (minutes >= 2) {
-      const gained = Math.floor(minutes / 2);
-      setLevelProgress((prev) => Math.min(prev + gained, 100));
-      setCompletedProgress((prev) => prev + 1);
-    }
-  }, []);
+    if (minutes >= 2) {
+      const gained = Math.floor(minutes / 2);
+      setLevelProgress((prev) => Math.min(prev + gained, 100));
+      setCompletedProgress((prev) => prev + 1);
+    }
+  }, []);
 
-  useEffect(() => {
-    const syncProgress = () => {
-      setLevelProgress(Number(localStorage.getItem("levelProgress")) || 0);
-      setCompletedProgress(Number(localStorage.getItem("completedProgress")) || 0);
+  useEffect(() => {
+    const syncProgress = () => {
+      setLevelProgress(Number(localStorage.getItem("levelProgress")) || 0);
+      setCompletedProgress(Number(localStorage.getItem("completedProgress")) || 0);
 
-      const storedRank = JSON.parse(localStorage.getItem("rankData")) || null;
-      if (storedRank) setRank(storedRank);
-    };
+      const storedRank = JSON.parse(localStorage.getItem("rankData")) || null;
+      if (storedRank) setRank(storedRank);
+    };
 
-    window.addEventListener("progressUpdate", syncProgress);
-    return () => window.removeEventListener("progressUpdate", syncProgress);
-  }, []);
+    window.addEventListener("progressUpdate", syncProgress);
+    return () => window.removeEventListener("progressUpdate", syncProgress);
+  }, []);
 
-  const upgradeRank = () => {
-    let { tier, stage } = rank;
+  const upgradeRank = () => {
+    let { tier, stage } = rank;
 
-    if (stage < 5) stage += 1;
-    else {
-      const index = rankOrder.indexOf(tier);
-      if (index < rankOrder.length - 1) {
-        tier = rankOrder[index + 1];
-        stage = 1;
-      }
-    }
+    if (stage < 5) stage += 1;
+    else {
+      const index = rankOrder.indexOf(tier);
+      if (index < rankOrder.length - 1) {
+        tier = rankOrder[index + 1];
+        stage = 1;
+      }
+    }
 
-    const newRank = { tier, stage };
-    setRank(newRank);
-    localStorage.setItem("rankData", JSON.stringify(newRank));
+    const newRank = { tier, stage };
+    setRank(newRank);
+    localStorage.setItem("rankData", JSON.stringify(newRank));
 
-    setLevelProgress(0);
-    setCompletedProgress(0);
+    setLevelProgress(0);
+    setCompletedProgress(0);
 
-    window.dispatchEvent(new Event("progressUpdate"));
-  };
+    window.dispatchEvent(new Event("progressUpdate"));
+  };
 
-  useEffect(() => {
-    if (levelProgress >= 100 && completedProgress >= 10) upgradeRank();
-  }, [levelProgress, completedProgress]);
+  useEffect(() => {
+    if (levelProgress >= 100 && completedProgress >= 10) upgradeRank();
+  }, [levelProgress, completedProgress]);
 
-  const openBook = (book) => {
-    const formats = book.formats;
-    const url =
-      formats["text/plain; charset=utf-8"] ||
-      formats["text/plain"] ||
-      formats["text/html; charset=utf-8"] ||
-      formats["text/html"] ||
-      formats["application/epub+zip"] ||
-      null;
+  const openBook = (book) => {
+    const formats = book.formats;
+    const url =
+      formats["text/plain; charset=utf-8"] ||
+      formats["text/plain"] ||
+      formats["text/html; charset=utf-8"] ||
+      formats["text/html"] ||
+      formats["application/epub+zip"] ||
+      null;
 
-    if (url) {
-      localStorage.setItem("readingStartTime", Date.now());
-      localStorage.setItem("currentBookId", book.id);
+    if (url) {
+      localStorage.setItem("readingStartTime", Date.now());
+      localStorage.setItem("currentBookId", book.id);
 
-      const booksRead = Number(localStorage.getItem("booksRead")) || 0;
-      localStorage.setItem("booksRead", booksRead + 1);
+      const booksRead = Number(localStorage.getItem("booksRead")) || 0;
+      localStorage.setItem("booksRead", booksRead + 1);
 
-      window.dispatchEvent(new Event("progressUpdate"));
+      window.dispatchEvent(new Event("progressUpdate"));
 
-      navigate("/read", { state: { book, link: url } });
-    }
-  };
+      navigate("/read", { state: { book, link: url } });
+    }
+  };
 
-  const toggleBookmark = (book) => {
-    const stored = JSON.parse(localStorage.getItem("bookmarks") || "[]");
-    const isBookmarked = bookmarkedIds.includes(book.id);
-    let updatedBookmarks;
+  const toggleBookmark = (book) => {
+    const stored = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+    const isBookmarked = bookmarkedIds.includes(book.id);
+    let updatedBookmarks;
 
-    if (isBookmarked) {
-      updatedBookmarks = stored.filter((b) => b.id !== book.id);
-      setBookmarkedIds((prev) => prev.filter((id) => id !== book.id));
-    } else {
-      updatedBookmarks = [...stored, book];
-      setBookmarkedIds((prev) => [...prev, book.id]);
-    }
+    if (isBookmarked) {
+      updatedBookmarks = stored.filter((b) => b.id !== book.id);
+      setBookmarkedIds((prev) => prev.filter((id) => id !== book.id));
+    } else {
+      updatedBookmarks = [...stored, book];
+      setBookmarkedIds((prev) => [...prev, book.id]);
+    }
 
-    localStorage.setItem("bookmarks", JSON.stringify(updatedBookmarks));
+    localStorage.setItem("bookmarks", JSON.stringify(updatedBookmarks));
 
-    const el = document.getElementById(`bookmark-icon-${book.id}`);
-    if (el) {
-      el.classList.add("scale-up");
-      setTimeout(() => el.classList.remove("scale-up"), 300);
-    }
-  };
+    const el = document.getElementById(`bookmark-icon-${book.id}`);
+    if (el) {
+      el.classList.add("scale-up");
+      setTimeout(() => el.classList.remove("scale-up"), 300);
+    }
+  };
 
-  return (
-    <>
-      <DashboardNavbar profileImage={profileImage} />
-      <main className="flex-1 flex flex-col p-6 overflow-auto mt-6 mb-12" style={{ backgroundColor: "#F9F3EA" }}>
-        <div
-          className="flex items-center justify-between w-full h-[180px] rounded-2xl overflow-hidden shadow-2xl relative mt-6"
-          style={{
-            backgroundImage: "url('/src/assets/bronze.png')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
-          }}
-        >
-          <div className="absolute inset-0 bg-black/60"></div>
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F9F3EA]">
+        <p className="text-gray-600">Loading dashboard...</p>
+      </div>
+    );
+  }
 
-          <div className="relative flex items-center w-full md:w-1/2 p-4 md:p-8 space-x-4 md:space-x-6 backdrop-blur-[2px] z-10">
-            <label
-              htmlFor="profile-upload-disabled"
-              className="relative w-20 h-20 md:w-40 md:h-32 bg-gray-700/80 rounded-lg flex items-center justify-center overflow-hidden border border-gray-600"
-            >
-              {profileImage ? (
-                <img src={profileImage} alt="Profile" className="object-cover w-full h-full" />
-              ) : (
-                <div className="flex flex-col items-center justify-center text-gray-300">
-                  <Upload size={24} />
-                </div>
-              )}
-              <input id="profile-upload-disabled" type="file" disabled className="hidden" />
-            </label>
+  return (
+    <>
+      <DashboardNavbar profileImage={profileImage} />
+      <main className="flex-1 flex flex-col p-6 overflow-auto mt-6 mb-12" style={{ backgroundColor: "#F9F3EA" }}>
+        <div
+          className="flex items-center justify-between w-full h-[180px] rounded-2xl overflow-hidden shadow-2xl relative mt-6"
+          style={{
+            backgroundImage: "url('/src/assets/bronze.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
+          }}
+        >
+          <div className="absolute inset-0 bg-black/60"></div>
 
-            <div className="w-full">
-              <h2 className="text-lg md:text-2xl font-semibold text-white drop-shadow-md">{userData.firstName}</h2>
+          <div className="relative flex items-center w-full md:w-1/2 p-4 md:p-8 space-x-4 md:space-x-6 backdrop-blur-[2px] z-10">
+            <label
+              htmlFor="profile-upload-disabled"
+              className="relative w-20 h-20 md:w-40 md:h-32 bg-gray-700/80 rounded-lg flex items-center justify-center overflow-hidden border border-gray-600"
+            >
+              {profileImage ? (
+                <img src={profileImage} alt="Profile" className="object-cover w-full h-full" />
+              ) : (
+                <div className="flex flex-col items-center justify-center text-gray-300">
+                  <Upload size={24} />
+                </div>
+              )}
+              <input id="profile-upload-disabled" type="file" disabled className="hidden" />
+            </label>
 
-              <div className="flex items-center text-xs md:text-sm text-gray-200 mt-1 space-x-2">
-                <span>{userData.email}</span>
-                <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                <span className="text-amber-400 font-medium">
-                  {rank.tier} {rankStages[rank.stage - 1]}
-                </span>
-              </div>
+            <div className="w-full">
+              <h2 className="text-lg md:text-2xl font-semibold text-white drop-shadow-md">
+                {userData.firstName} {userData.lastName}
+              </h2>
 
-              <div className="mt-2 md:mt-3 space-y-2 md:space-y-3">
-                <div>
-                  <div className="flex justify-between text-xs md:text-xs mb-1 text-white">
-                    <span>LVL</span>
-                    <span>{levelProgress} /100%</span>
-                  </div>
-                  <div className="relative w-full h-2 bg-[#c2a27a]/40 rounded-full overflow-hidden">
-                    <div className="h-2 bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${levelProgress}%` }}></div>
-                  </div>
-                </div>
+              <div className="flex items-center text-xs md:text-sm text-gray-200 mt-1 space-x-2">
+                <span>{userData.email}</span>
+                <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                <span className="text-amber-400 font-medium">
+                  {rank.tier} {rankStages[rank.stage - 1]}
+                </span>
+              </div>
 
-                <div>
-                  <div className="flex justify-between text-xs md:text-xs mb-1 text-white">
-                    <span>Completed</span>
-                    <span>{completedProgress} /10</span>
-                  </div>
-                  <div className="relative w-full h-2 bg-[#c2a27a]/40 rounded-full overflow-hidden">
-                    <div className="h-2 bg-[#d9a86c] rounded-full transition-all duration-500" style={{ width: `${completedProgress * 10}%` }}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+              <div className="mt-2 md:mt-3 space-y-2 md:space-y-3">
+                <div>
+                  <div className="flex justify-between text-xs md:text-xs mb-1 text-white">
+                    <span>LVL</span>
+                    <span>{levelProgress} /100%</span>
+                  </div>
+                  <div className="relative w-full h-2 bg-[#c2a27a]/40 rounded-full overflow-hidden">
+                    <div className="h-2 bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${levelProgress}%` }}></div>
+                  </div>
+                </div>
 
-          <div className="hidden md:flex relative w-1/2 p-8 flex-col justify-center z-10 text-left">
-            <h3 className="text-xl font-semibold text-white drop-shadow-md mr-8">Unlock Stories. Level Up Learning.</h3>
-            <p className="text-sm text-gray-200 mt-3 drop-shadow-sm mr-8">Story-driven games make reading fun and rewarding.</p>
-            <img src="/src/assets/dragon.png" alt="Dragon" className="absolute bottom-3 right-3 w-28 h-28 object-contain opacity-90" />
-          </div>
-        </div>
+                <div>
+                  <div className="flex justify-between text-xs md:text-xs mb-1 text-white">
+                    <span>Completed</span>
+                    <span>{completedProgress} /10</span>
+                  </div>
+                  <div className="relative w-full h-2 bg-[#c2a27a]/40 rounded-full overflow-hidden">
+                    <div className="h-2 bg-[#d9a86c] rounded-full transition-all duration-500" style={{ width: `${completedProgress * 10}%` }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-          <div className="order-1 md:order-2 bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col h-auto md:h-[calc(100vh-300px)]">
-            <h2 className="text-lg font-semibold p-4 sticky top-0 bg-white z-10 border-b border-gray-200 rounded-t-2xl">To-do</h2>
-            <div className="overflow-auto flex-1 flex flex-col items-center justify-center p-4">
-              <img src="/src/assets/bear.png" className="w-16 md:w-20 opacity-50" />
-              <p className="text-gray-500 mt-3 text-sm">No Task Available</p>
-            </div>
-          </div>
+          <div className="hidden md:flex relative w-1/2 p-8 flex-col justify-center z-10 text-left">
+            <h3 className="text-xl font-semibold text-white drop-shadow-md mr-8">Unlock Stories. Level Up Learning.</h3>
+            <p className="text-sm text-gray-200 mt-3 drop-shadow-sm mr-8">Story-driven games make reading fun and rewarding.</p>
+            <img src="/src/assets/dragon.png" alt="Dragon" className="absolute bottom-3 right-3 w-28 h-28 object-contain opacity-90" />
+          </div>
+        </div>
 
-          <div className="order-2 md:order-1 bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col h-[400px] md:h-[calc(100vh-300px)] md:col-span-2">
-            <h2 className="text-lg font-semibold p-4 sticky top-0 bg-white z-10 border-b border-gray-200 rounded-t-2xl">Suggested</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div className="order-1 md:order-2 bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col h-auto md:h-[calc(100vh-300px)]">
+            <h2 className="text-lg font-semibold p-4 sticky top-0 bg-white z-10 border-b border-gray-200 rounded-t-2xl">To-do</h2>
+            <div className="overflow-auto flex-1 flex flex-col items-center justify-center p-4">
+              <img src="/src/assets/bear.png" className="w-16 md:w-20 opacity-50" />
+              <p className="text-gray-500 mt-3 text-sm">No Task Available</p>
+            </div>
+          </div>
 
-            <div className="overflow-auto p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-3 md:gap-5">
-              {suggested.map((book) => (
-                <div
-                  key={book.id}
-                  className="flex p-2 sm:p-3 md:p-4 border rounded-2xl shadow-sm bg-[#faf7f3] space-x-2 md:space-x-3 relative cursor-pointer transition-transform duration-200 hover:scale-105"
-                  onClick={() => openBook(book)}
-                >
-                  <div className="relative w-16 h-24 sm:w-20 sm:h-28 md:w-24 md:h-36">
-                    <img src={book.formats["image/jpeg"] || "/src/assets/book.png"} className="w-full h-full object-cover rounded-2xl" />
-                  </div>
+          <div className="order-2 md:order-1 bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col h-[400px] md:h-[calc(100vh-300px)] md:col-span-2">
+            <h2 className="text-lg font-semibold p-4 sticky top-0 bg-white z-10 border-b border-gray-200 rounded-t-2xl">Suggested</h2>
 
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-semibold text-sm sm:text-base md:text-lg mb-1 line-clamp-2">{book.title}</h3>
-                      <p className="text-xs sm:text-sm md:text-base text-gray-700 mb-1">{book.authors?.[0]?.name || "Unknown Author"}</p>
-                      <p className="text-sm sm:text-base md:text-xl text-yellow-500 mb-1 font-bold">
-                        {"★".repeat(ratings[book.id] || 0) + "☆".repeat(5 - (ratings[book.id] || 0))}
-                      </p>
-                    </div>
+            <div className="overflow-auto p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-3 md:gap-5">
+              {suggested.map((book) => (
+                <div
+                  key={book.id}
+                  className="flex p-2 sm:p-3 md:p-4 border rounded-2xl shadow-sm bg-[#faf7f3] space-x-2 md:space-x-3 relative cursor-pointer transition-transform duration-200 hover:scale-105"
+                  onClick={() => openBook(book)}
+                >
+                  <div className="relative w-16 h-24 sm:w-20 sm:h-28 md:w-24 md:h-36">
+                    <img src={book.formats["image/jpeg"] || "/src/assets/book.png"} className="w-full h-full object-cover rounded-2xl" />
+                  </div>
 
-                    <div className="mt-1 flex space-x-1 sm:space-x-2 md:space-x-2">
-                      <button
-                        className="text-xs sm:text-sm md:text-sm px-2 sm:px-3 py-1 rounded text-white"
-                        style={{ backgroundColor: "#870022" }}
-                        onClick={() => openBook(book)}
-                      >
-                        Read Now
-                      </button>
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3 className="font-semibold text-sm sm:text-base md:text-lg mb-1 line-clamp-2">{book.title}</h3>
+                      <p className="text-xs sm:text-sm md:text-base text-gray-700 mb-1">{book.authors?.[0]?.name || "Unknown Author"}</p>
+                      <p className="text-sm sm:text-base md:text-xl text-yellow-500 mb-1 font-bold">
+                        {"★".repeat(ratings[book.id] || 0) + "☆".repeat(5 - (ratings[book.id] || 0))}
+                      </p>
+                    </div>
 
-                      <button
-                        id={`bookmark-icon-${book.id}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleBookmark(book);
-                        }}
-                        className="p-1 sm:p-2 rounded flex items-center justify-center text-white hover:opacity-90 transition-transform hover:scale-105"
-                        style={{ backgroundColor: "#870022" }}
-                      >
-                        {bookmarkedIds.includes(book.id) ? (
-                          <BookmarkCheck className="w-4 sm:w-5 h-4 sm:h-5 text-yellow-400" />
-                        ) : (
-                          <Bookmark className="w-4 sm:w-5 h-4 sm:h-5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+                    <div className="mt-1 flex space-x-1 sm:space-x-2 md:space-x-2">
+                      <button
+                        className="text-xs sm:text-sm md:text-sm px-2 sm:px-3 py-1 rounded text-white"
+                        style={{ backgroundColor: "#870022" }}
+                        onClick={() => openBook(book)}
+                      >
+                        Read Now
+                      </button>
 
-        <style>
-          {`
-            .scale-up {
-              transform: scale(0.5);
-              transition: transform 0.3s ease-in-out;
-            }
-          `}
-        </style>
-      </main>
-    </>
-  );
+                      <button
+                        id={`bookmark-icon-${book.id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleBookmark(book);
+                        }}
+                        className="p-1 sm:p-2 rounded flex items-center justify-center text-white hover:opacity-90 transition-transform hover:scale-105"
+                        style={{ backgroundColor: "#870022" }}
+                      >
+                        {bookmarkedIds.includes(book.id) ? (
+                          <BookmarkCheck className="w-4 sm:w-5 h-4 sm:h-5 text-yellow-400" />
+                        ) : (
+                          <Bookmark className="w-4 sm:w-5 h-4 sm:h-5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <style>
+          {`
+            .scale-up {
+              transform: scale(0.5);
+              transition: transform 0.3s ease-in-out;
+            }
+          `}
+        </style>
+      </main>
+    </>
+  );
 };
 
 export default DashboardHome;

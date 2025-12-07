@@ -63,8 +63,10 @@ const Signup = () => {
       });
       const data = await res.json();
       if (data && data.success) {
-        // Store email for auto-fill on login
+        // Store email, first name, last name, and full name for later use
         localStorage.setItem("email", email);
+        localStorage.setItem("firstName", firstName);
+        localStorage.setItem("lastName", lastName);
         localStorage.setItem("fullName", username);
         setIsSuccess(true);
       } else {
