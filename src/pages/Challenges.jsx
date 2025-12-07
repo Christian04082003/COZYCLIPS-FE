@@ -49,7 +49,8 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Authorization": `Bearer ${token}`,
+          "Cache-Control": "no-cache, no-store, must-revalidate"
         }
       });
 
@@ -233,7 +234,10 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
     // Listen for custom bookCompleted event
     const handleBookCompleted = () => {
       console.log("Book completed event received, refreshing quests...");
-      load();
+      // Add a small delay to allow backend to process the book completion
+      setTimeout(() => {
+        load();
+      }, 500);
     };
 
     window.addEventListener("focus", handleFocus);
