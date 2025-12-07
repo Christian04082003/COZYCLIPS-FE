@@ -157,6 +157,9 @@ const Read = () => {
       const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
       const token = authData.token;
       
+      // Get the start time from localStorage (was set when user started reading)
+      const startTime = Number(localStorage.getItem("readingStartTime")) || Date.now();
+      
       if (token) {
         const response = await fetch("https://czc-eight.vercel.app/api/quest/update-progress", {
           method: "POST",
@@ -166,7 +169,8 @@ const Read = () => {
           },
           body: JSON.stringify({
             eventType: "book_completed",
-            bookId: book.id
+            bookId: book.id,
+            startTime: startTime
           })
         });
         
@@ -192,8 +196,6 @@ const Read = () => {
     // Go back to library or dashboard
     navigate("/library");
   };
-
-  const isLastPage = pageIndex === totalDoublePages - 1 && !rightPage;
 
   // Automatically record book completion when user reaches the last page
   useEffect(() => {
