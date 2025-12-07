@@ -60,7 +60,13 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
       const data = await response.json();
       
       if (data.success && Array.isArray(data.quests)) {
-        setQuests(data.quests);
+        // Ensure all quests have valid progress values
+        const validatedQuests = data.quests.map(quest => ({
+          ...quest,
+          currentProgress: quest.currentProgress !== undefined ? quest.currentProgress : 0,
+          targetProgress: quest.targetProgress !== undefined ? quest.targetProgress : 1
+        }));
+        setQuests(validatedQuests);
       } else {
         console.error("Invalid response format:", data);
         setQuests([]);
