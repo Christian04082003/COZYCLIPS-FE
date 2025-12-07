@@ -5,11 +5,35 @@ import { useNavigate, useLocation } from "react-router-dom";
 const DashboardNavbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [coinBalance, setCoinBalance] = useState(0);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Fetch coin balance from backend
+  // Check if user is logged in
+  useEffect(() => {
+    const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+    const token = authData.token;
+    const isAtRoot = location.pathname === "/";
+    
+    if (isAtRoot) {
+      // Reset auth and coins when at root
+      localStorage.removeItem("czc_auth");
+      localStorage.removeItem("token");
+      localStorage.removeItem("coins");
+      setIsLoggedIn(false);
+      setCoinBalance(0);
+    } else if (token) {
+      setIsLoggedIn(true);
+    } else {
+      setIsLoggedIn(false);
+    }
+  }, [location.pathname]);
+
+  // Fetch coin balance from backend (only if logged in and not at root)
   const fetchCoinBalance = async () => {
+    const isAtRoot = location.pathname === "/";
+    if (isAtRoot) return;
+
     try {
       const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
       let token = authData.token;
@@ -55,14 +79,18 @@ const DashboardNavbar = () => {
 
   // Listen for coin updates from other components
   useEffect(() => {
-    // Fetch initial coin balance
-    fetchCoinBalance();
+    const isAtRoot = location.pathname === "/";
+    
+    // Only fetch if not at root
+    if (!isAtRoot) {
+      fetchCoinBalance();
+    }
 
     // Listen for custom coinUpdate events
     const handleCoinUpdate = (event) => {
       if (event.detail && event.detail.coins !== undefined) {
         setCoinBalance(event.detail.coins);
-      } else {
+      } else if (!isAtRoot) {
         // Refetch from backend if no detail provided
         fetchCoinBalance();
       }
@@ -83,7 +111,7 @@ const DashboardNavbar = () => {
       window.removeEventListener("coinUpdate", handleCoinUpdate);
       window.removeEventListener("storage", handleStorageChange);
     };
-  }, []);
+  }, [location.pathname]);
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", path: "/dashboard" },
@@ -125,18 +153,22 @@ const DashboardNavbar = () => {
           </button>
         ))}
         
-        {/* Coin Balance Display */}
-        <div className="flex items-center gap-2 bg-white text-[#870022] px-4 py-1.5 rounded-full font-bold">
-          <span className="text-yellow-500 text-xl">🪙</span>
-          <span>{coinBalance}</span>
-        </div>
+        {/* Coin Balance Display - Only show if logged in */}
+        {isLoggedIn && (
+          <div className="flex items-center gap-2 bg-white text-[#870022] px-4 py-1.5 rounded-full font-bold">
+            <span className="text-yellow-500 text-xl">🪙</span>
+            <span>{coinBalance}</span>
+          </div>
+        )}
 
-        <button
-          onClick={handleLogout}
-          className="bg-white text-black font-semibold px-6 py-0.5 rounded-md hover:bg-gray-300 transition"
-        >
-          Logout
-        </button>
+        {isLoggedIn && (
+          <button
+            onClick={handleLogout}
+            className="bg-white text-black font-semibold px-6 py-0.5 rounded-md hover:bg-gray-300 transition"
+          >
+            Logout
+          </button>
+        )}
       </div>
 
       {/* Mobile Menu Button */}
@@ -147,11 +179,13 @@ const DashboardNavbar = () => {
       {/* Mobile Menu */}
       {isOpen && (
         <div className="absolute top-[60px] right-0 bg-[#870022] w-2/3 p-5 rounded-bl-xl shadow-lg flex flex-col items-center text-center md:hidden">
-          {/* Coin Balance - Mobile */}
-          <div className="flex items-center gap-2 bg-white text-[#870022] px-4 py-2 rounded-full font-bold mb-4">
-            <span className="text-yellow-500 text-xl">🪙</span>
-            <span>{coinBalance}</span>
-          </div>
+          {/* Coin Balance - Mobile - Only show if logged in */}
+          {isLoggedIn && (
+            <div className="flex items-center gap-2 bg-white text-[#870022] px-4 py-2 rounded-full font-bold mb-4">
+              <span className="text-yellow-500 text-xl">🪙</span>
+              <span>{coinBalance}</span>
+            </div>
+          )}
 
           {navItems.map((item) => (
             <button
@@ -167,12 +201,15 @@ const DashboardNavbar = () => {
               {item.label}
             </button>
           ))}
-          <button
-            onClick={handleLogout}
-            className="mt-5 bg-white text-black font-semibold px-5 py-2 rounded-md hover:bg-gray-300"
-          >
-            Logout
-          </button>
+          
+          {isLoggedIn && (
+            <button
+              onClick={handleLogout}
+              className="mt-5 bg-white text-black font-semibold px-5 py-2 rounded-md hover:bg-gray-300"
+            >
+              Logout
+            </button>
+          )}
         </div>
       )}
     </nav>
