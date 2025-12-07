@@ -116,10 +116,20 @@ const Read = () => {
   if (!book) return <p className="text-center mt-10">No book selected.</p>;
 
   // Desktop shows 2 pages at once (left and right)
-  const leftPage = pageIndex === 0 ? null : pages[(pageIndex - 1) * 2 + 1];
-  const rightPage = pageIndex === 0 ? pages[0] : pages[(pageIndex - 1) * 2 + 2];
+  // Title page is page 0, content starts at page 1
+  let leftPage, rightPage;
+  if (pageIndex === 0) {
+    // Title page
+    leftPage = null;
+    rightPage = pages.length > 0 ? pages[0] : null;
+  } else {
+    // Content pages
+    leftPage = pages[(pageIndex - 1) * 2] || null;
+    rightPage = pages[(pageIndex - 1) * 2 + 1] || null;
+  }
+  
   const totalDoublePages = Math.ceil((pages.length + 1) / 2); // +1 for title page
-  const isLastPage = pageIndex === totalDoublePages - 1 && !rightPage;
+  const isLastPage = pageIndex === totalDoublePages - 1;
 
   const handleScroll = () => {
     setShowPageIndicator(true);
@@ -199,11 +209,11 @@ const Read = () => {
 
   // Automatically record book completion when user reaches the last page
   useEffect(() => {
-    if (isLastPage && pageIndex > 0 && pages.length > 0 && !hasRecordedCompletion) {
+    if (isLastPage && pages.length > 0 && !hasRecordedCompletion) {
       setHasRecordedCompletion(true);
       recordBookCompletion();
     }
-  }, [isLastPage, pageIndex, pages.length, recordBookCompletion, hasRecordedCompletion]);
+  }, [isLastPage, pages.length, recordBookCompletion, hasRecordedCompletion]);
 
   return (
     <div
@@ -315,7 +325,7 @@ const Read = () => {
 
             <div className="absolute bottom-8 right-[50px] pointer-events-none">
               <div className="pointer-events-auto">
-                {pageIndex < totalDoublePages - 1 && (
+                {!isLastPage && (
                   <button
                     onClick={() => setPageIndex(pageIndex + 1)}
                     className="bg-[#b0042b] text-white px-6 py-2.5 rounded-lg shadow-lg hover:bg-[#8a0322] transition-all transform hover:scale-105 font-semibold"
