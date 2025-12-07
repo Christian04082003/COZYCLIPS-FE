@@ -302,6 +302,17 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
                     </button>
                   )}
 
+                  {quest.status === "in_progress" && (
+                    <button
+                      onClick={() => completeQuest(quest.id)}
+                      disabled={completingQuestId === quest.id}
+                      className="px-4 py-2 rounded-lg text-sm text-white bg-gradient-to-r from-blue-600 to-purple-600 
+                                 hover:from-blue-700 hover:to-purple-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {completingQuestId === quest.id ? "Claiming..." : "Claim Reward"}
+                    </button>
+                  )}
+
                   {quest.status === "completed" && (
                     <p className="text-green-600 font-semibold flex items-center gap-1 text-sm">
                       <CheckCircle size={18} /> Claimed
