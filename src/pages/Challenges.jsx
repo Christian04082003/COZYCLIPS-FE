@@ -223,6 +223,25 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
       setLoading(false);
     };
     load();
+
+    // Refetch quests when page regains focus (e.g., after reading a book)
+    const handleFocus = () => {
+      console.log("Page regained focus, refreshing quests...");
+      load();
+    };
+
+    // Listen for custom bookCompleted event
+    const handleBookCompleted = () => {
+      console.log("Book completed event received, refreshing quests...");
+      load();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("bookCompleted", handleBookCompleted);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("bookCompleted", handleBookCompleted);
+    };
   }, []);
 
   // Fetch coin balance when component mounts and when quests change

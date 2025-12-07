@@ -166,6 +166,8 @@ const Read = () => {
         if (response.ok) {
           const data = await response.json();
           console.log("Quest progress updated:", data);
+          // Dispatch event to notify Challenges page
+          window.dispatchEvent(new Event("bookCompleted"));
         }
       }
     } catch (error) {
@@ -204,6 +206,8 @@ const Read = () => {
         if (response.ok) {
           const data = await response.json();
           console.log("Quest progress updated:", data);
+          // Dispatch event to notify Challenges page
+          window.dispatchEvent(new Event("bookCompleted"));
         }
       }
     } catch (error) {
