@@ -158,7 +158,8 @@ const Read = () => {
             "Authorization": `Bearer ${token}`
           },
           body: JSON.stringify({
-            eventType: "book_completed"
+            eventType: "book_completed",
+            bookId: book.id
           })
         });
         
@@ -195,7 +196,8 @@ const Read = () => {
             "Authorization": `Bearer ${token}`
           },
           body: JSON.stringify({
-            eventType: "book_completed"
+            eventType: "book_completed",
+            bookId: book.id
           })
         });
         
