@@ -61,11 +61,16 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
       
       if (data.success && Array.isArray(data.quests)) {
         // Ensure all quests have valid progress values
-        const validatedQuests = data.quests.map(quest => ({
-          ...quest,
-          currentProgress: quest.currentProgress !== undefined ? quest.currentProgress : 0,
-          targetProgress: quest.targetProgress !== undefined ? quest.targetProgress : 1
-        }));
+        const validatedQuests = data.quests.map(quest => {
+          const target = Number(quest.targetProgress) || 1;
+          const current = Number(quest.currentProgress) || 0;
+          return {
+            ...quest,
+            currentProgress: current,
+            targetProgress: target
+          };
+        });
+        console.log("Validated quests:", validatedQuests);
         setQuests(validatedQuests);
       } else {
         console.error("Invalid response format:", data);
@@ -301,7 +306,7 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
                   <p className="text-gray-600 mb-2 text-sm">{quest.description}</p>
 
                   <p className="text-sm text-gray-700 mb-1">
-                    Progress: <b>{quest.currentProgress !== undefined && quest.targetProgress !== undefined ? `${quest.currentProgress}/${quest.targetProgress}` : "Loading..."}</b>
+                    Progress: <b>{quest.currentProgress >= 0 && quest.targetProgress > 0 ? `${Math.floor(quest.currentProgress)}/${Math.floor(quest.targetProgress)}` : "Loading..."}</b>
                   </p>
 
                   <div className="w-full h-3 bg-blue-200 rounded-full progress-stroke mb-3">
@@ -336,7 +341,7 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
 
                   {quest.status === "in_progress" && (
                     <p className="text-gray-600 font-semibold text-sm">
-                      Progress: {quest.currentProgress !== undefined && quest.targetProgress !== undefined ? `${quest.currentProgress}/${quest.targetProgress}` : "Loading..."}
+                      Progress: {quest.currentProgress >= 0 && quest.targetProgress > 0 ? `${Math.floor(quest.currentProgress)}/${Math.floor(quest.targetProgress)}` : "Loading..."}
                     </p>
                   )}
 
