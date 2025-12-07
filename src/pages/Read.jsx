@@ -110,6 +110,13 @@ const Read = () => {
     loadText();
   }, [book, isMobile]);
 
+  // Automatically record book completion when user reaches the last page
+  useEffect(() => {
+    if (isLastPage && pageIndex > 0) {
+      recordBookCompletion();
+    }
+  }, [isLastPage, pageIndex]);
+
   if (!book) return <p className="text-center mt-10">No book selected.</p>;
 
   // Desktop shows 2 pages at once (left and right)
@@ -138,7 +145,10 @@ const Read = () => {
     }
   };
 
-  const handleTakeQuiz = async () => {
+  // Record book completion when user reaches the end
+  const recordBookCompletion = async () => {
+    console.log("Recording book completion:", book.id);
+    
     const completed = Number(localStorage.getItem("completedProgress")) || 0;
     localStorage.setItem("completedProgress", completed + 1);
     const booksRead = Number(localStorage.getItem("booksRead")) || 0;
@@ -165,55 +175,23 @@ const Read = () => {
         
         if (response.ok) {
           const data = await response.json();
-          console.log("Quest progress updated:", data);
+          console.log("Book completion recorded on backend:", data);
           // Dispatch event to notify Challenges page
           window.dispatchEvent(new Event("bookCompleted"));
         }
       }
     } catch (error) {
-      console.error("Error updating quest progress:", error);
+      console.error("Error recording book completion:", error);
     }
+  };
 
+  const handleTakeQuiz = async () => {
+    // Book completion is already recorded when reaching the last page
     navigate("/dashboardlayout/quiz-game", { state: { book } });
   };
 
   const handleBookComplete = async () => {
-    // Record book completion without taking quiz
-    const completed = Number(localStorage.getItem("completedProgress")) || 0;
-    localStorage.setItem("completedProgress", completed + 1);
-    const booksRead = Number(localStorage.getItem("booksRead")) || 0;
-    localStorage.setItem("booksRead", booksRead + 1);
-    window.dispatchEvent(new Event("storage"));
-
-    // Update quest progress on backend
-    try {
-      const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
-      const token = authData.token;
-      
-      if (token) {
-        const response = await fetch("https://czc-eight.vercel.app/api/quest/update-progress", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            eventType: "book_completed",
-            bookId: book.id
-          })
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Quest progress updated:", data);
-          // Dispatch event to notify Challenges page
-          window.dispatchEvent(new Event("bookCompleted"));
-        }
-      }
-    } catch (error) {
-      console.error("Error updating quest progress:", error);
-    }
-
+    // Book completion is already recorded when reaching the last page
     // Go back to library or dashboard
     navigate("/library");
   };
