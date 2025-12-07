@@ -99,7 +99,9 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log("Fetched coin balance from backend:", data);
         if (data.success && data.coins !== undefined) {
+          console.log("Setting coin balance to:", data.coins);
           setCoinBalance(data.coins);
           localStorage.setItem("coins", String(data.coins));
         }
@@ -150,6 +152,7 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
       const data = await response.json();
       
       if (data.success) {
+        console.log("Quest completed successfully:", data);
         // Update local quest status
         setQuests(prevQuests =>
           prevQuests.map((q) =>
@@ -159,6 +162,7 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
 
         // Update coin balance from backend response
         const newBalance = data.newCoins || coinBalance + quest.reward;
+        console.log("New coin balance:", newBalance);
         setCoinBalance(newBalance);
         
         // Update localStorage coins to sync with navbar
