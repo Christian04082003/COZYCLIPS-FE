@@ -163,8 +163,8 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
         
         // Update localStorage coins to sync with navbar
         localStorage.setItem("coins", String(newBalance));
-        // Trigger storage event to notify navbar
-        window.dispatchEvent(new Event("storage"));
+        // Dispatch custom event to notify navbar
+        window.dispatchEvent(new CustomEvent("coinUpdate", { detail: { coins: newBalance } }));
 
         // Show success animations
         setShowConfetti(true);
@@ -175,6 +175,11 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
           type: "success" 
         });
         setTimeout(() => setNotification(null), 4000);
+        
+        // Refetch coin balance from backend to ensure consistency
+        setTimeout(() => {
+          fetchCoinBalance();
+        }, 1000);
       } else {
         throw new Error(data.message || "Failed to claim reward");
       }

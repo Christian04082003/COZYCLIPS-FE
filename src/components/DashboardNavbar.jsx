@@ -69,12 +69,27 @@ const DashboardNavbar = ({ profileImage }) => {
   }, []);
 
   useEffect(() => {
+    // Listen for custom coin update event
+    const handleCoinUpdate = (event) => {
+      if (event.detail && event.detail.coins !== undefined) {
+        setCoins(event.detail.coins);
+      }
+    };
+    
+    window.addEventListener("coinUpdate", handleCoinUpdate);
+    
+    // Also listen to localStorage changes for cross-tab sync
     const handleStorage = () => {
       const updated = localStorage.getItem("coins");
       if (updated) setCoins(parseInt(updated, 10));
     };
+    
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    
+    return () => {
+      window.removeEventListener("coinUpdate", handleCoinUpdate);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
   const handleNavClick = (item) => {
