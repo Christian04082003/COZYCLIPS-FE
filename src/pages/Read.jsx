@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const Read = () => {
@@ -12,6 +12,7 @@ const Read = () => {
   const [showPageIndicator, setShowPageIndicator] = useState(true);
   const [editingPage, setEditingPage] = useState(false);
   const [pageInput, setPageInput] = useState("");
+  const [hasRecordedCompletion, setHasRecordedCompletion] = useState(false);
   const readingTimerRef = useRef(null);
 
   useEffect(() => {
@@ -108,14 +109,9 @@ const Read = () => {
       }
     };
     loadText();
+    setHasRecordedCompletion(false); // Reset flag when loading a new book
+    setPageIndex(0); // Reset to first page
   }, [book, isMobile]);
-
-  // Automatically record book completion when user reaches the last page
-  useEffect(() => {
-    if (isLastPage && pageIndex > 0) {
-      recordBookCompletion();
-    }
-  }, [isLastPage, pageIndex]);
 
   if (!book) return <p className="text-center mt-10">No book selected.</p>;
 
@@ -123,6 +119,7 @@ const Read = () => {
   const leftPage = pageIndex === 0 ? null : pages[(pageIndex - 1) * 2 + 1];
   const rightPage = pageIndex === 0 ? pages[0] : pages[(pageIndex - 1) * 2 + 2];
   const totalDoublePages = Math.ceil((pages.length + 1) / 2); // +1 for title page
+  const isLastPage = pageIndex === totalDoublePages - 1 && !rightPage;
 
   const handleScroll = () => {
     setShowPageIndicator(true);
@@ -146,7 +143,7 @@ const Read = () => {
   };
 
   // Record book completion when user reaches the end
-  const recordBookCompletion = async () => {
+  const recordBookCompletion = useCallback(async () => {
     console.log("Recording book completion:", book.id);
     
     const completed = Number(localStorage.getItem("completedProgress")) || 0;
@@ -183,7 +180,7 @@ const Read = () => {
     } catch (error) {
       console.error("Error recording book completion:", error);
     }
-  };
+  }, [book.id]);
 
   const handleTakeQuiz = async () => {
     // Book completion is already recorded when reaching the last page
@@ -197,6 +194,14 @@ const Read = () => {
   };
 
   const isLastPage = pageIndex === totalDoublePages - 1 && !rightPage;
+
+  // Automatically record book completion when user reaches the last page
+  useEffect(() => {
+    if (isLastPage && pageIndex > 0 && pages.length > 0 && !hasRecordedCompletion) {
+      setHasRecordedCompletion(true);
+      recordBookCompletion();
+    }
+  }, [isLastPage, pageIndex, pages.length, recordBookCompletion, hasRecordedCompletion]);
 
   return (
     <div
