@@ -21,7 +21,66 @@ const ProfileSettings = () => {
 
   const [fullName, setFullName] = useState(localStorage.getItem("fullName") || "");
   const [username, setUsername] = useState(localStorage.getItem("username") || "");
+  const [email, setEmail] = useState(localStorage.getItem("email") || "");
   const [errorsRequired, setErrorsRequired] = useState({ fullName: false, username: false });
+
+  React.useEffect(() => {
+    // Fetch user data from backend on component mount
+    const fetchUserData = async () => {
+      try {
+        const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+        const token = authData.token;
+        const userId = authData.id;
+        
+        if (!token || !userId) {
+          console.error("No authentication found");
+          return;
+        }
+
+        // Fetch user profile from backend
+        const response = await fetch(`https://czc-eight.vercel.app/api/student/profile/${userId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data && data.data.profile) {
+            const profile = data.data.profile;
+            // Update state with Firestore data
+            setUsername(profile.username || localStorage.getItem("username") || "");
+            setFullName(profile.fullName || localStorage.getItem("fullName") || "");
+            // Email comes from user collection, not student profile
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  // Also fetch email from auth data or user collection
+  React.useEffect(() => {
+    const fetchEmailFromAuth = async () => {
+      try {
+        const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+        // Email should be in the auth object from login
+        if (authData.email) {
+          setEmail(authData.email);
+          localStorage.setItem("email", authData.email);
+        }
+      } catch (error) {
+        console.error("Error fetching email:", error);
+      }
+    };
+
+    fetchEmailFromAuth();
+  }, []);
 
   const avatars = [avatar1, avatar2, avatar3, avatar4, avatar5, avatar6];
   const frames = [frame1, frame2, frame3, frame4, frame5, frame6];
@@ -179,9 +238,17 @@ const ProfileSettings = () => {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Enter your username"
-            className={`w-full bg-[#F7EFE6] border rounded p-3 mb-6 text-lg ${
+            className={`w-full bg-[#F7EFE6] border rounded p-3 mb-4 text-lg ${
               errorsRequired.username ? "border-red-500" : "border-gray-400"
             }`}
+          />
+
+          <label className="text-lg font-medium">Email</label>
+          <input
+            value={email}
+            disabled
+            placeholder="Your email"
+            className="w-full bg-gray-200 border border-gray-400 rounded p-3 mb-6 text-lg text-gray-600 cursor-not-allowed"
           />
 
           <div className="flex justify-center mb-4">

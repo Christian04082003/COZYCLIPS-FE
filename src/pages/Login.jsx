@@ -40,6 +40,10 @@ const Login = () => {
       if (data && data.success) {
         try {
           localStorage.setItem("czc_auth", JSON.stringify(data.data || {}));
+          // Store email separately for easy access
+          if (data.data && data.data.user && data.data.user.email) {
+            localStorage.setItem("email", data.data.user.email);
+          }
         } catch (err) { }
         navigate("/dashboardlayout");
       } else {

@@ -63,6 +63,9 @@ const Signup = () => {
       });
       const data = await res.json();
       if (data && data.success) {
+        // Store email for auto-fill on login
+        localStorage.setItem("email", email);
+        localStorage.setItem("fullName", username);
         setIsSuccess(true);
       } else {
         alert(data?.message || "Failed to create account. Try again.");
