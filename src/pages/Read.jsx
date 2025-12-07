@@ -151,7 +151,7 @@ const Read = () => {
       const token = authData.token;
       
       if (token) {
-        await fetch("https://czc-eight.vercel.app/api/quest/update-progress", {
+        const response = await fetch("https://czc-eight.vercel.app/api/quest/update-progress", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -160,13 +160,56 @@ const Read = () => {
           body: JSON.stringify({
             eventType: "book_completed"
           })
-        }).catch(err => console.error("Failed to update quest progress:", err));
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Quest progress updated:", data);
+        }
       }
     } catch (error) {
       console.error("Error updating quest progress:", error);
     }
 
     navigate("/dashboardlayout/quiz-game", { state: { book } });
+  };
+
+  const handleBookComplete = async () => {
+    // Record book completion without taking quiz
+    const completed = Number(localStorage.getItem("completedProgress")) || 0;
+    localStorage.setItem("completedProgress", completed + 1);
+    const booksRead = Number(localStorage.getItem("booksRead")) || 0;
+    localStorage.setItem("booksRead", booksRead + 1);
+    window.dispatchEvent(new Event("storage"));
+
+    // Update quest progress on backend
+    try {
+      const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+      const token = authData.token;
+      
+      if (token) {
+        const response = await fetch("https://czc-eight.vercel.app/api/quest/update-progress", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            eventType: "book_completed"
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Quest progress updated:", data);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating quest progress:", error);
+    }
+
+    // Go back to library or dashboard
+    navigate("/library");
   };
 
   const isLastPage = pageIndex === totalDoublePages - 1 && !rightPage;
@@ -219,13 +262,21 @@ const Read = () => {
                   <div className="bg-white/90 rounded-lg p-8 shadow-xl text-center">
                     <h2 className="text-2xl font-bold mb-4 text-gray-800">Congratulations! 🎉</h2>
                     <p className="text-lg mb-6 text-gray-700">You've finished reading this book.</p>
-                    <p className="text-base mb-6 font-semibold text-gray-800">Ready to test your knowledge?</p>
-                    <button
-                      onClick={handleTakeQuiz}
-                      className="bg-[#b0042b] text-white px-6 py-3 rounded-lg shadow-lg hover:bg-[#8a0322] transition-all transform hover:scale-105"
-                    >
-                      Take Quiz
-                    </button>
+                    <p className="text-base mb-6 font-semibold text-gray-800">What would you like to do?</p>
+                    <div className="flex gap-3 justify-center">
+                      <button
+                        onClick={handleBookComplete}
+                        className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-green-700 transition-all transform hover:scale-105"
+                      >
+                        Complete & Back to Library
+                      </button>
+                      <button
+                        onClick={handleTakeQuiz}
+                        className="bg-[#b0042b] text-white px-6 py-3 rounded-lg shadow-lg hover:bg-[#8a0322] transition-all transform hover:scale-105"
+                      >
+                        Take Quiz
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : rightPage ? (
@@ -309,13 +360,21 @@ const Read = () => {
                     <div className="bg-gray-50 rounded-lg p-6 shadow-md text-center">
                       <h3 className="text-xl font-bold mb-3">Congratulations! 🎉</h3>
                       <p className="text-sm mb-4 text-gray-700">You've finished reading this book.</p>
-                      <p className="text-base mb-4 font-semibold">Ready to test your knowledge?</p>
-                      <button
-                        onClick={handleTakeQuiz}
-                        className="bg-[#b0042b] text-white px-6 py-3 rounded-lg shadow-lg hover:bg-[#8a0322] transition-all"
-                      >
-                        Take Quiz
-                      </button>
+                      <p className="text-base mb-4 font-semibold">What would you like to do?</p>
+                      <div className="flex gap-2 justify-center flex-col sm:flex-row">
+                        <button
+                          onClick={handleBookComplete}
+                          className="bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-green-700 transition-all text-sm sm:text-base"
+                        >
+                          Complete & Back
+                        </button>
+                        <button
+                          onClick={handleTakeQuiz}
+                          className="bg-[#b0042b] text-white px-4 py-3 rounded-lg shadow-lg hover:bg-[#8a0322] transition-all text-sm sm:text-base"
+                        >
+                          Take Quiz
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
