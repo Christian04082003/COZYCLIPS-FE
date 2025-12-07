@@ -18,36 +18,52 @@ const shuffleArray = (array) => {
 // -------------------------------------------------------------------------
 
 const DashboardHome = () => {
-  const [profileImage, setProfileImage] = useState(localStorage.getItem("profileImage") || null);
+  const [profileImage, setProfileImage] = useState(localStorage.getItem("profileImage") || null);
 
-  const [userData, setUserData] = useState({
-    firstName: localStorage.getItem("username") || "User",
-    email: "user@email.com",
-  });
+  const [userData, setUserData] = useState({
+    firstName: localStorage.getItem("username") || "User",
+    email: localStorage.getItem("email") || "user@email.com",
+  });
 
-  const [levelProgress, setLevelProgress] = useState(() => Number(localStorage.getItem("levelProgress")) || 0);
-  const [completedProgress, setCompletedProgress] = useState(() => Number(localStorage.getItem("completedProgress")) || 0);
+  const [levelProgress, setLevelProgress] = useState(() => Number(localStorage.getItem("levelProgress")) || 0);
+  const [completedProgress, setCompletedProgress] = useState(() => Number(localStorage.getItem("completedProgress")) || 0);
 
-  const [suggested, setSuggested] = useState([]);
-  const [bookmarkedIds, setBookmarkedIds] = useState(() => {
-    const saved = localStorage.getItem("bookmarks");
-    return saved ? JSON.parse(saved).map((b) => b.id) : [];
-  });
+  const [suggested, setSuggested] = useState([]);
+  const [bookmarkedIds, setBookmarkedIds] = useState(() => {
+    const saved = localStorage.getItem("bookmarks");
+    return saved ? JSON.parse(saved).map((b) => b.id) : [];
+  });
 
-  const [ratings, setRatings] = useState({});
-  const [rank, setRank] = useState(JSON.parse(localStorage.getItem("rankData")) || { tier: "Bronze", stage: 1 });
+  const [ratings, setRatings] = useState({});
+  const [rank, setRank] = useState(JSON.parse(localStorage.getItem("rankData")) || { tier: "Bronze", stage: 1 });
 
-  const navigate = useNavigate();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const savedImage = localStorage.getItem("profileImage");
-    if (savedImage) setProfileImage(savedImage);
+  useEffect(() => {
+    const savedImage = localStorage.getItem("profileImage");
+    if (savedImage) setProfileImage(savedImage);
 
-    const savedUsername = localStorage.getItem("username");
-    if (savedUsername) setUserData((u) => ({ ...u, firstName: savedUsername }));
-  }, []);
+    const savedUsername = localStorage.getItem("username");
+    const savedEmail = localStorage.getItem("email");
+    if (savedUsername || savedEmail) {
+      setUserData((u) => ({ 
+        ...u, 
+        firstName: savedUsername || u.firstName,
+        email: savedEmail || u.email
+      }));
+    }
 
-  // --- START: Updated useEffect hook for fetching suggested books from the backend ---
+    // Also fetch from auth data to ensure we have the most recent email
+    try {
+      const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+      if (authData.user && authData.user.email) {
+        setUserData((u) => ({ ...u, email: authData.user.email }));
+        localStorage.setItem("email", authData.user.email);
+      }
+    } catch (error) {
+      console.error("Error fetching email from auth data:", error);
+    }
+  }, []);  // --- START: Updated useEffect hook for fetching suggested books from the backend ---
   useEffect(() => {
     const fetchSuggestedBooks = async () => {
       try {
