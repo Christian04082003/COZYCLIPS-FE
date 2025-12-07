@@ -125,10 +125,13 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
 
   // Complete quest via backend
   const completeQuest = async (id) => {
+    console.log("completeQuest called with id:", id, "Type:", typeof id);
     setCompletingQuestId(id);
     const quest = quests.find((q) => q.id === id);
 
     console.log("Attempting to complete quest:", quest);
+    console.log("Quest ID from object:", quest?.id, "Type:", typeof quest?.id);
+    console.log("All quest IDs available:", quests.map(q => ({ id: q.id, type: typeof q.id, title: q.title })));
 
     if (!quest || quest.status === "completed") {
       console.error("Quest already completed or not found:", quest);
