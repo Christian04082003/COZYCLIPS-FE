@@ -138,12 +138,34 @@ const Read = () => {
     }
   };
 
-  const handleTakeQuiz = () => {
+  const handleTakeQuiz = async () => {
     const completed = Number(localStorage.getItem("completedProgress")) || 0;
     localStorage.setItem("completedProgress", completed + 1);
     const booksRead = Number(localStorage.getItem("booksRead")) || 0;
     localStorage.setItem("booksRead", booksRead + 1);
     window.dispatchEvent(new Event("storage"));
+
+    // Update quest progress on backend
+    try {
+      const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+      const token = authData.token;
+      
+      if (token) {
+        await fetch("https://czc-eight.vercel.app/api/quest/update-progress", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            eventType: "book_completed"
+          })
+        }).catch(err => console.error("Failed to update quest progress:", err));
+      }
+    } catch (error) {
+      console.error("Error updating quest progress:", error);
+    }
+
     navigate("/dashboardlayout/quiz-game", { state: { book } });
   };
 
