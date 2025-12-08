@@ -1,24 +1,28 @@
 import React from "react";
+import chatIcon from "../assets/chat.png";
+import empowerIcon from "../assets/empower.png";
+import enrichIcon from "../assets/enrich.png";
+import elevateIcon from "../assets/elevate.png";
 
 const Devider1 = () => {
   const items = [
     {
-      icon: "/src/assets/chat.png",
+      icon: chatIcon,
       title: "Engage",
       text: "Personalized reading with visuals and adjustable text for clearer, engaging learning.",
     },
     {
-      icon: "/src/assets/empower.png",
+      icon: empowerIcon,
       title: "Empower",
       text: "Accessible stories that adapt to boost focus and enjoyment for all learners.",
     },
     {
-      icon: "/src/assets/enrich.png",
+      icon: enrichIcon,
       title: "Enrich",
       text: "CozyClips makes reading interactive and engaging.",
     },
     {
-      icon: "/src/assets/elevate.png",
+      icon: elevateIcon,
       title: "Elevate",
       text: "CozyClips personalizes reading for smoother, enjoyable learning.",
     },

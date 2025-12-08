@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import sideImage from "../assets/Side-1.png";
 
 const BASE_URL = "https://czc-eight.vercel.app";
 
@@ -142,7 +143,7 @@ const Login = () => {
 
         <div
           className="order-2 flex-1 flex flex-col justify-center items-center text-white p-8 sm:p-10 md:p-14 lg:p-16 bg-cover bg-center text-center h-[45vh] sm:h-[50vh] md:h-auto mb-6 sm:mb-0"
-          style={{ backgroundImage: "url('/src/assets/Side-1.png')" }}
+          style={{ backgroundImage: `url(${sideImage})` }}
         >
           <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold leading-relaxed max-w-lg drop-shadow-lg mb-6">
             New here? <br /> Sign up to discover and enjoy personalized reading with{" "}

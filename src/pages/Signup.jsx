@@ -1,6 +1,7 @@
   import React, { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import sideImage from "../assets/Side-1.png";
 
 const BASE_URL = "https://czc-eight.vercel.app";
 
@@ -92,7 +93,7 @@ const Signup = () => {
       <div className="w-[95%] md:w-[92%] lg:w-[88%] xl:w-[85%] min-h-[75vh] md:min-h-[70vh] bg-[#F3EBE2] rounded-none md:rounded-[20px] overflow-hidden shadow-2xl flex flex-col-reverse md:flex-row relative">
         <div
           className="flex-1 flex flex-col justify-center items-center text-white p-8 sm:p-10 md:p-14 lg:p-16 bg-cover bg-center text-center h-[45vh] sm:h-[50vh] md:h-auto"
-          style={{ backgroundImage: "url('/src/assets/Side-1.png')" }}
+          style={{ backgroundImage: `url(${sideImage})` }}
         >
           <p className="text-lg sm:text-xl md:text-2xl lg:text-4xl font-semibold leading-relaxed max-w-lg drop-shadow-lg mb-6">
             To stay connected with us, please log in using your personal information.

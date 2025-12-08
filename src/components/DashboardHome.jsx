@@ -4,6 +4,7 @@ import { Upload, Bookmark, BookmarkCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import dragonImg from "../assets/dragon.png";
 import bearImg from "../assets/bear.png";
+import bronzeImg from "../assets/bronze.png";
 
 const rankStages = ["V", "IV", "III", "II", "I"];
 const rankOrder = ["Bronze", "Silver", "Gold", "Diamond", "Amethyst", "Challenger"];
@@ -351,7 +352,7 @@ const DashboardHome = () => {
         <div
           className="flex items-center justify-between w-full h-[180px] rounded-2xl overflow-hidden shadow-2xl relative mt-6"
           style={{
-            backgroundImage: "url('/src/assets/bronze.png')",
+            backgroundImage: `url(${bronzeImg})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
             boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
