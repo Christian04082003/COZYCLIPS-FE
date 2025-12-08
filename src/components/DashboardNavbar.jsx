@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import coinsImg from "../assets/coins.png";
-import defaultProfile from "../assets/dafault.webp";
 
 const DashboardNavbar = ({ profileImage }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -140,7 +138,7 @@ const DashboardNavbar = ({ profileImage }) => {
 
       <div className="hidden lg:flex items-center space-x-6 xl:space-x-8">
         <div className="flex items-center space-x-2">
-          <img src={coinsImg} alt="Coin Icon" className="h-6 w-6" />
+          <img src="/src/assets/coins.png" alt="Coin Icon" className="h-6 w-6" />
           <span className="text-base font-medium inline-block text-right" style={{ width: "5px" }}>
             {coins}
           </span>
@@ -148,7 +146,7 @@ const DashboardNavbar = ({ profileImage }) => {
 
         <div onClick={handleProfileClick} className="cursor-pointer">
           <img
-            src={savedImage || defaultProfile}
+            src={savedImage || "/profile.jpg"}
             alt="User Profile"
             className="h-10 w-10 rounded-full border-[2px] border-white object-cover"
           />
@@ -157,7 +155,7 @@ const DashboardNavbar = ({ profileImage }) => {
 
       <div className="flex lg:hidden items-center space-x-3 sm:space-x-4">
         <div className="flex items-center space-x-1 sm:space-x-2">
-          <img src={coinsImg} alt="Coin" className="h-5 w-5" />
+          <img src="/src/assets/coins.png" alt="Coin" className="h-5 w-5" />
           <span className="text-sm font-medium inline-block text-right" style={{ width: "30px" }}>
             {coins}
           </span>
@@ -174,7 +172,7 @@ const DashboardNavbar = ({ profileImage }) => {
       {isOpen && (
         <div className="absolute top-[64px] right-0 lg:hidden bg-[#870022] w-[60%] sm:w-[50%] p-5 rounded-bl-xl shadow-lg flex flex-col items-center space-y-3">
           <img
-            src={savedImage || defaultProfile}
+            src={savedImage || "/profile.jpg"}
             alt="User Profile"
             className="h-14 w-14 rounded-full border-[1px] border-white object-cover mb-4"
           />
