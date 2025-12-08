@@ -115,24 +115,57 @@ const Shop = () => {
   }, [searchParams]);
 
   const fetchConfig = async (key) => {
-    const sampleAbilities = [
-      { id: 'double-xp', name: 'Double XP', cost: 500, rarity: 'rare', description: 'Earn double XP for 24 hours', icon: 'Zap' },
-      { id: 'shield', name: 'Damage Shield', cost: 300, rarity: 'uncommon', description: 'Reduce challenge penalties', icon: 'Shield' },
-      { id: 'focus', name: 'Focus Boost', cost: 200, rarity: 'common', description: 'Highlight key words while reading', icon: 'Brain' },
-      { id: 'time-freeze', name: 'Time Freeze', cost: 400, rarity: 'epic', description: 'Pause timers during challenges', icon: 'Clock' },
-      { id: 'goal-lock', name: 'Goal Lock', cost: 250, rarity: 'uncommon', description: 'Lock target words to highlight', icon: 'Target' },
-      { id: 'bookworm', name: 'Reading Booster', cost: 150, rarity: 'common', description: 'Small XP boost on reading', icon: 'Book' },
-      { id: 'spark-burst', name: 'Spark Burst', cost: 350, rarity: 'rare', description: 'Instant hint in quizzes', icon: 'Sparkles' },
-      { id: 'flame-armor', name: 'Flame Armor', cost: 600, rarity: 'legendary', description: 'Negate one penalty in challenges', icon: 'Flame' },
-    ];
-
-    const samplePackages = [
-      { id: 'c-100', coins: 100, price: 100, discountPercent: 10, highlight: true, icon: 'Gift' },
-      { id: 'c-500', coins: 500, price: 500, discountPercent: 10, highlight: false, icon: 'Trophy' },
-      { id: 'c-1000', coins: 1000, price: 1000, discountPercent: 10, highlight: false, icon: 'Star' },
-    ];
-
-    return key === 'abilities' ? sampleAbilities : samplePackages;
+    // Fetch from backend API
+    if (key === 'abilities') {
+      try {
+        const response = await fetch('/api/shop', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          console.warn(`Failed to fetch abilities from /api/shop: ${response.status}`);
+          // Fallback to local data
+          return [
+            { id: 'double-xp', name: 'Double XP', cost: 500, rarity: 'rare', description: 'Earn double XP for 24 hours', icon: 'Zap' },
+            { id: 'shield', name: 'Damage Shield', cost: 300, rarity: 'uncommon', description: 'Reduce challenge penalties', icon: 'Shield' },
+            { id: 'focus', name: 'Focus Boost', cost: 200, rarity: 'common', description: 'Highlight key words while reading', icon: 'Brain' },
+            { id: 'time-freeze', name: 'Time Freeze', cost: 400, rarity: 'epic', description: 'Pause timers during challenges', icon: 'Clock' },
+            { id: 'goal-lock', name: 'Goal Lock', cost: 250, rarity: 'uncommon', description: 'Lock target words to highlight', icon: 'Target' },
+            { id: 'bookworm', name: 'Reading Booster', cost: 150, rarity: 'common', description: 'Small XP boost on reading', icon: 'Book' },
+            { id: 'spark-burst', name: 'Spark Burst', cost: 350, rarity: 'rare', description: 'Instant hint in quizzes', icon: 'Sparkles' },
+            { id: 'flame-armor', name: 'Flame Armor', cost: 600, rarity: 'legendary', description: 'Negate one penalty in challenges', icon: 'Flame' },
+          ];
+        }
+        
+        const result = await response.json();
+        // Map backend data to expected format
+        return result.data?.items || result.data || [];
+      } catch (error) {
+        console.error('Error fetching abilities from backend:', error);
+        // Fallback to local data
+        return [
+          { id: 'double-xp', name: 'Double XP', cost: 500, rarity: 'rare', description: 'Earn double XP for 24 hours', icon: 'Zap' },
+          { id: 'shield', name: 'Damage Shield', cost: 300, rarity: 'uncommon', description: 'Reduce challenge penalties', icon: 'Shield' },
+          { id: 'focus', name: 'Focus Boost', cost: 200, rarity: 'common', description: 'Highlight key words while reading', icon: 'Brain' },
+          { id: 'time-freeze', name: 'Time Freeze', cost: 400, rarity: 'epic', description: 'Pause timers during challenges', icon: 'Clock' },
+          { id: 'goal-lock', name: 'Goal Lock', cost: 250, rarity: 'uncommon', description: 'Lock target words to highlight', icon: 'Target' },
+          { id: 'bookworm', name: 'Reading Booster', cost: 150, rarity: 'common', description: 'Small XP boost on reading', icon: 'Book' },
+          { id: 'spark-burst', name: 'Spark Burst', cost: 350, rarity: 'rare', description: 'Instant hint in quizzes', icon: 'Sparkles' },
+          { id: 'flame-armor', name: 'Flame Armor', cost: 600, rarity: 'legendary', description: 'Negate one penalty in challenges', icon: 'Flame' },
+        ];
+      }
+    }
+    
+    // Coin packages remain hardcoded for now
+    if (key === 'coinPackages') {
+      return [
+        { id: 'c-100', coins: 100, price: 100, discountPercent: 10, highlight: true, icon: 'Gift' },
+        { id: 'c-500', coins: 500, price: 500, discountPercent: 10, highlight: false, icon: 'Trophy' },
+        { id: 'c-1000', coins: 1000, price: 1000, discountPercent: 10, highlight: false, icon: 'Star' },
+      ];
+    }
   };
 
   const handleBuyAbility = (ability) => {
