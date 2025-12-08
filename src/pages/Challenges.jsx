@@ -3,7 +3,7 @@ import DashboardNavbar from "../components/DashboardNavbar";
 import { BookOpen, Coins, CheckCircle, Calendar } from "lucide-react";
 
 // The base URL for the API
-const API_BASE_URL = "/api"; 
+const API_BASE_URL = "https://czc-eight.vercel.app/api"; 
 
 // Storage key for challenge completion dates
 const CHALLENGE_COMPLETION_KEY = "challengeCompletionDates";
@@ -192,15 +192,11 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
       
       for (const quest of fetchedQuests) {
         if (!seenTitles.has(quest.title)) {
-          // Don't set status here for Reading Warrior - it will be calculated based on streak in render
-          // For other quests, calculate status if not provided by backend
-          const isReadingWarrior = quest.title && quest.title.toLowerCase().includes("7 day reading warrior");
-          if (!isReadingWarrior) {
-            if (quest.currentProgress >= quest.targetProgress && quest.status !== "completed") {
-              quest.status = "ready_to_complete";
-            } else if (quest.status !== "completed") {
-              quest.status = "in_progress";
-            }
+          // Calculate status if not provided by backend (optional, depends on API)
+          if (quest.currentProgress >= quest.targetProgress && quest.status !== "completed") {
+            quest.status = "ready_to_complete";
+          } else if (quest.status !== "completed") {
+            quest.status = "in_progress";
           }
           uniqueQuests.push(quest);
           seenTitles.add(quest.title);
@@ -445,19 +441,6 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
               let consecutiveDays = isReadingWarrior ? readingWarriorStreak : getConsecutiveDays(quest.id);
               let completedToday = isReadingWarrior ? readingWarriorStreak > 0 : isChallengeCompletedOnDate(quest.id);
 
-              // Recalculate status for Reading Warrior based on streak
-              let questStatus = quest.status;
-              if (isReadingWarrior) {
-                if (questStatus === "completed") {
-                  // Keep completed status
-                  questStatus = "completed";
-                } else if (consecutiveDays >= quest.targetProgress) {
-                  questStatus = "ready_to_complete";
-                } else {
-                  questStatus = "in_progress";
-                }
-              }
-
               return (
                 <div
                   key={quest.id}
@@ -469,8 +452,8 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
                     {/* Title and Status Tag */}
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="text-xl font-bold flex-1">{quest.title}</h3>
-                      <span className={`px-2 py-1 rounded-full text-xs border whitespace-nowrap ml-2 ${getStatusColor(questStatus)}`}>
-                        {getStatusText(questStatus)}
+                      <span className={`px-2 py-1 rounded-full text-xs border whitespace-nowrap ml-2 ${getStatusColor(quest.status)}`}>
+                        {getStatusText(quest.status)}
                       </span>
                     </div>
 
@@ -519,7 +502,7 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
                       {quest.reward}
                     </span>
 
-                    {questStatus === "ready_to_complete" && (
+                    {quest.status === "ready_to_complete" && (
                       <button
                         onClick={() => completeQuest(quest.id)}
                         disabled={completingQuestId === quest.id || completedToday}
@@ -534,13 +517,13 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
                       </button>
                     )}
 
-                    {questStatus === "in_progress" && (
+                    {quest.status === "in_progress" && (
                       <p className="text-gray-600 font-semibold text-sm">
                         Keep Going!
                       </p>
                     )}
 
-                    {questStatus === "completed" && (
+                    {quest.status === "completed" && (
                       <p className="text-green-600 font-semibold flex items-center gap-1 text-sm">
                         <CheckCircle size={18} /> Claimed
                       </p>
