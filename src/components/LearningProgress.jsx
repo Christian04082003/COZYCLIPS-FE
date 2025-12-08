@@ -49,6 +49,27 @@ const rankImages = {
 const rankOrder = ["Bronze", "Silver", "Gold", "Diamond", "Amethyst", "Challenger"];
 const romanStages = ["V", "IV", "III", "II", "I"];
 
+// Backend base URL
+const BASE_URL = "https://czc-eight.vercel.app";
+
+function getAuth() {
+  try {
+    const raw = localStorage.getItem("czc_auth");
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    const token =
+      parsed?.token ||
+      parsed?.accessToken ||
+      parsed?.idToken ||
+      parsed?.data?.token ||
+      parsed?.data?.accessToken ||
+      parsed?.user?.token;
+    return { token };
+  } catch {
+    return {};
+  }
+}
+
 const LearningProgress = () => {
   const [rank, setRank] = useState(
     JSON.parse(localStorage.getItem("rankData")) || {
@@ -61,6 +82,8 @@ const LearningProgress = () => {
   const [points, setPoints] = useState(() => Number(localStorage.getItem("points")) || 0);
   const [booksRead, setBooksRead] = useState(() => Number(localStorage.getItem("booksRead")) || 0);
   const [booksCompleted, setBooksCompleted] = useState(() => Number(localStorage.getItem("completedProgress")) || 0);
+
+  const [history, setHistory] = useState([]);
 
   const levelGoal = 100;
   const booksGoal = 10;
@@ -128,6 +151,87 @@ const LearningProgress = () => {
   useEffect(() => {
     if (level >= 100 && booksCompleted >= 10) upgradeRank();
   }, [level, booksCompleted]);
+
+  useEffect(() => {
+    let mounted = true;
+    const { token } = getAuth();
+
+    async function tryFetch(paths, options = {}) {
+      for (const p of paths) {
+        try {
+          const res = await fetch(p, options);
+          if (res.status === 404) continue; 
+          return res;
+        } catch (e) {
+          continue;
+        }
+      }
+      throw new Error("All fetch attempts failed");
+    }
+
+    async function loadRanking() {
+      try {
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const primaryRanking = `${BASE_URL}/api/ranking`;
+        const fallbackRanking = `${BASE_URL}/ranking`;
+
+        const rRes = await tryFetch([primaryRanking, fallbackRanking], { headers });
+        if (rRes && rRes.ok) {
+          const json = await rRes.json();
+          const tier = json?.tier || json?.currentRank?.split?.(" ")?.[0] || rank.tier;
+          const stage = Number(json?.sublevel || json?.sublevel === 0 ? json.sublevel : json?.sublevel) || json?.sublevel || rank.stage || 1;
+          const progress = Number(json?.progressInSublevel || 0);
+          const computedLevel = Math.min(Math.round((progress / 10) * 100), 100);
+
+          if (mounted) {
+            const newRank = { tier, stage: Math.max(1, Math.min(5, stage)) };
+            setRank(newRank);
+            localStorage.setItem("rankData", JSON.stringify(newRank));
+
+            // Use returned totals where possible
+            const totalCompleted = Number(json?.totalCompletedBooks ?? booksCompleted);
+            setBooksRead(totalCompleted);
+            setBooksCompleted(totalCompleted);
+            localStorage.setItem("booksRead", totalCompleted);
+            localStorage.setItem("completedProgress", totalCompleted);
+
+            if (typeof json?.totalPoints !== "undefined") {
+              setPoints(Number(json.totalPoints));
+              localStorage.setItem("points", Number(json.totalPoints));
+            } else {
+            }
+
+            setLevel(computedLevel);
+            localStorage.setItem("levelProgress", computedLevel);
+          }
+        } else {
+          // console.warn('Ranking endpoint failed', rRes && rRes.status);
+        }
+
+        const primaryHistory = `${BASE_URL}/api/ranking/history`;
+        const fallbackHistory = `${BASE_URL}/ranking/history`;
+        try {
+          const hRes = await tryFetch([primaryHistory, fallbackHistory], { headers });
+          if (hRes && hRes.ok) {
+            const hj = await hRes.json();
+            if (mounted) {
+              setHistory(Array.isArray(hj?.history) ? hj.history : []);
+            }
+          }
+        } catch (e) {
+        }
+      } catch (e) {
+        // console.warn('loadRanking error', e);
+      }
+    }
+    loadRanking();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const levelPercent = Math.min((level / levelGoal) * 100, 100);
   const booksPercent = Math.min((booksRead / booksGoal) * 100, 100);

@@ -1,8 +1,5 @@
-
-
 import React, { useState, useEffect } from "react";
 import { Search, Volume2 } from "lucide-react";
-import bulbImg from "../assets/bulb.png";
 
 const WordHelper = () => {
   const [query, setQuery] = useState("");
@@ -12,6 +9,33 @@ const WordHelper = () => {
   const [error, setError] = useState("");
   const [isSwapped, setIsSwapped] = useState(false);
 
+  // Auth token retrieval
+  function getToken() {
+    try {
+      const raw = localStorage.getItem("czc_auth");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed?.token || parsed?.accessToken || parsed?.idToken || parsed?.data?.token || parsed?.data?.accessToken || parsed?.user?.token || null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Keep original fallback translator
+  const translateToTagalog = async (text) => {
+    try {
+      const res = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
+          text
+        )}&langpair=en|tl`
+      );
+      const data = await res.json();
+      return data.responseData.translatedText;
+    } catch {
+      return "";
+    }
+  };
+
   const fetchWord = async () => {
     if (!query.trim()) return;
 
@@ -20,15 +44,105 @@ const WordHelper = () => {
     setResult(null);
     setTranslation(null);
 
-    try {
-      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${query}`);
+    const token = getToken();
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
 
+    async function callBackend(translateParam) {
+      const url = `https://czc-eight.vercel.app/api/word-helper?word=${encodeURIComponent(query)}&translate=${encodeURIComponent(translateParam)}`;
+      try {
+        const res = await fetch(url, { method: "GET", headers });
+        return res;
+      } catch (err) {
+        throw err;
+      }
+    }
+
+    try {
+      // first attempt: assume English input and request Tagalog translations
+      let res = await callBackend("tl");
+
+      // if not found, try Tagalog input path which asks backend to translate input to English
+      if (!res.ok && res.status === 404) {
+        res = await callBackend("en");
+      }
+
+      // handle authorization issues explicitly (fall back to public dictionary)
       if (!res.ok) {
-        setError("Word not found. Try another one.");
+        if (res.status === 401 || res.status === 403) {
+          await fetchFromPublicDictionary();
+          setLoading(false);
+          return;
+        }
+        // other errors: fallback to public dictionary
+        await fetchFromPublicDictionary();
         setLoading(false);
         return;
       }
 
+      const json = await res.json().catch(() => ({}));
+      const data = json?.data || json;
+      if (!data) {
+        await fetchFromPublicDictionary();
+        setLoading(false);
+        return;
+      }
+
+      // Map backend shape to expected UI shape
+      const mapped = {
+        word: data.word || query,
+        phonetics: data.pronunciation ? [{ audio: data.pronunciation }] : [],
+        phonetic: data.pronunciation && typeof data.pronunciation === "string" ? data.pronunciation : undefined,
+        meanings: [
+          {
+            partOfSpeech: data.partOfSpeech || "",
+            definitions: [{ definition: data.definition || "", example: data.example || "" }],
+            examples: data.example ? [data.example] : []
+          }
+        ]
+      };
+
+      setResult(mapped);
+
+      // Use translations returned or fallback to translator
+      if (data.translations && (data.translations.word || data.translations.definition || data.translations.example)) {
+        setTranslation({
+          word: data.translations.word || "",
+          definition: data.translations.definition || "",
+          example: data.translations.example || ""
+        });
+      } else {
+        (async () => {
+          try {
+            const def = mapped.meanings[0]?.definitions[0]?.definition || "";
+            const ex = mapped.meanings[0]?.examples?.[0] || "";
+            const [wTl, dTl, eTl] = await Promise.all([
+              translateToTagalog(mapped.word),
+              def ? translateToTagalog(def) : Promise.resolve(""),
+              ex ? translateToTagalog(ex) : Promise.resolve("")
+            ]);
+            setTranslation({ word: wTl, definition: dTl, example: eTl });
+          } catch {
+            setTranslation(null);
+          }
+        })();
+      }
+    } catch (err) {
+      console.error("WordHelper backend error:", err);
+      await fetchFromPublicDictionary();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Preserve original public-dictionary behavior as fallback (keeps design/UX)
+  const fetchFromPublicDictionary = async () => {
+    try {
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(query)}`);
+      if (!res.ok) {
+        setError("Word not found. Try another one.");
+        return;
+      }
       const data = await res.json();
       const wordData = data[0];
 
@@ -52,11 +166,27 @@ const WordHelper = () => {
       }
 
       setResult(wordData);
+
+      // populate translation via existing translator
+      const doTranslate = async () => {
+        const englishDef = wordData.meanings[0]?.definitions[0]?.definition || "";
+        const englishExample = wordData.meanings[0]?.examples?.[0] || "";
+
+        const wordTl = await translateToTagalog(wordData.word);
+        const defTl = await translateToTagalog(englishDef);
+        const exTl = englishExample ? await translateToTagalog(englishExample) : "";
+
+        setTranslation({
+          word: wordTl,
+          definition: defTl,
+          example: exTl
+        });
+      };
+
+      doTranslate();
     } catch {
       setError("Something went wrong. Try again.");
     }
-
-    setLoading(false);
   };
 
   const playAudio = () => {
@@ -64,39 +194,8 @@ const WordHelper = () => {
     if (audio) new Audio(audio).play();
   };
 
-  const translateToTagalog = async (text) => {
-    try {
-      const res = await fetch(
-        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
-          text
-        )}&langpair=en|tl`
-      );
-      const data = await res.json();
-      return data.responseData.translatedText;
-    } catch {
-      return "";
-    }
-  };
-
   useEffect(() => {
-    if (!result) return;
-
-    const doTranslate = async () => {
-      const englishDef = result.meanings[0]?.definitions[0]?.definition || "";
-      const englishExample = result.meanings[0]?.examples?.[0] || "";
-
-      const wordTl = await translateToTagalog(result.word);
-      const defTl = await translateToTagalog(englishDef);
-      const exTl = englishExample ? await translateToTagalog(englishExample) : "";
-
-      setTranslation({
-        word: wordTl,
-        definition: defTl,
-        example: exTl
-      });
-    };
-
-    doTranslate();
+    // no-op: translation is handled after result changes inside fetchWord
   }, [result]);
 
   return (
@@ -134,7 +233,7 @@ const WordHelper = () => {
 
         {!result && !loading && !error && (
           <div className="text-center">
-            <img src={bulbImg} alt="lightbulb" className="w-14 mx-auto mb-6" />
+            <img src="/src/assets/bulb.png" alt="lightbulb" className="w-14 mx-auto mb-6" />
             <h2 className="text-3xl font-semibold mb-5">Unlock the Power of Words</h2>
             <p className="text-gray-700 text-lg leading-relaxed max-w-2xl mx-auto mb-6">
               Enter any word to instantly get its definition, pronunciation, and examples.

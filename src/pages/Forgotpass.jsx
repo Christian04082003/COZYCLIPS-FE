@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import sideImage from "../assets/Side-1.png";
 
 const BASE_URL = "https://czc-eight.vercel.app";
 
@@ -268,7 +267,7 @@ const ForgotPassword = () => {
           className="flex-1 flex justify-center items-center text-white p-8 bg-cover bg-center
           order-last md:order-none min-h-[40vh] md:min-h-auto"
           style={{
-            backgroundImage: `url(${sideImage})`,
+            backgroundImage: "url('/src/assets/Side-1.png')",
           }}
         >
           <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold leading-relaxed max-w-md text-center drop-shadow-lg">

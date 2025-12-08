@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import avatar1 from "../assets/avatar1.png";
 import avatar2 from "../assets/avatar2.png";
@@ -12,7 +12,28 @@ import frame3 from "../assets/frame3.png";
 import frame4 from "../assets/frame4.png";
 import frame5 from "../assets/frame5.png";
 import frame6 from "../assets/frame6.png";
-import defaultAvatar from "../assets/dafault.webp";
+
+const BASE_URL = "https://czc-eight.vercel.app";
+
+function getAuth() {
+  try {
+    const raw = localStorage.getItem("czc_auth");
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    const token =
+      parsed?.token ||
+      parsed?.accessToken ||
+      parsed?.idToken ||
+      parsed?.data?.token ||
+      parsed?.data?.accessToken ||
+      parsed?.user?.token;
+    const user = parsed?.user || parsed?.data?.user || parsed?.data || parsed;
+    const userId = user?.id || user?.uid || user?.userId || user?.studentId || parsed?.id;
+    return { token, user, userId };
+  } catch {
+    return {};
+  }
+}
 
 const ProfileSettings = () => {
   const [profilePic, setProfilePic] = useState(localStorage.getItem("profileImage") || null);
@@ -22,66 +43,7 @@ const ProfileSettings = () => {
 
   const [fullName, setFullName] = useState(localStorage.getItem("fullName") || "");
   const [username, setUsername] = useState(localStorage.getItem("username") || "");
-  const [email, setEmail] = useState(localStorage.getItem("email") || "");
   const [errorsRequired, setErrorsRequired] = useState({ fullName: false, username: false });
-
-  React.useEffect(() => {
-    // Fetch user data from backend on component mount
-    const fetchUserData = async () => {
-      try {
-        const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
-        const token = authData.token;
-        const userId = authData.id;
-        
-        if (!token || !userId) {
-          console.error("No authentication found");
-          return;
-        }
-
-        // Fetch user profile from backend
-        const response = await fetch(`https://czc-eight.vercel.app/api/student/profile/${userId}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data && data.data.profile) {
-            const profile = data.data.profile;
-            // Update state with Firestore data
-            setUsername(profile.username || localStorage.getItem("username") || "");
-            setFullName(profile.fullName || localStorage.getItem("fullName") || "");
-            // Email comes from user collection, not student profile
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching user profile:", error);
-      }
-    };
-
-    fetchUserData();
-  }, []);
-
-  // Also fetch email from auth data or user collection
-  React.useEffect(() => {
-    const fetchEmailFromAuth = async () => {
-      try {
-        const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
-        // Email should be in the auth object from login
-        if (authData.email) {
-          setEmail(authData.email);
-          localStorage.setItem("email", authData.email);
-        }
-      } catch (error) {
-        console.error("Error fetching email:", error);
-      }
-    };
-
-    fetchEmailFromAuth();
-  }, []);
 
   const avatars = [avatar1, avatar2, avatar3, avatar4, avatar5, avatar6];
   const frames = [frame1, frame2, frame3, frame4, frame5, frame6];
@@ -100,6 +62,26 @@ const ProfileSettings = () => {
   const [passwordChangeSuccess, setPasswordChangeSuccess] = useState("");
 
   const [deleteConfirm, setDeleteConfirm] = useState("");
+
+  // Backend-related state
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [ranking, setRanking] = useState(null);
+  const [history, setHistory] = useState([]);
+
+  const { token, userId, user } = getAuth();
+
+  useEffect(() => {
+    loadProfile();
+    loadRanking();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const getHeaders = () => {
+    const h = { "Content-Type": "application/json" };
+    if (token) h["Authorization"] = `Bearer ${token}`;
+    return h;
+  };
 
   const handleUpload = (e) => {
     const file = e.target.files[0];
@@ -132,6 +114,231 @@ const ProfileSettings = () => {
     return minLength && hasUpper && hasLower && hasNumber;
   };
 
+  async function loadProfile() {
+    setLoading(true);
+    try {
+      if (userId) {
+        try {
+          const res = await fetch(`${BASE_URL}/api/student/profile/${userId}`, {
+            headers: getHeaders(),
+          });
+          if (res.ok) {
+            const json = await res.json();
+            setProfile(json?.data?.profile || null);
+            // sync UI fields
+            const p = json?.data?.profile;
+            if (p?.displayName) {
+              setFullName(p.displayName);
+              localStorage.setItem("fullName", p.displayName);
+            }
+            if (p?.username) {
+              setUsername(p.username);
+              localStorage.setItem("username", p.username);
+            }
+            if (p?.avatarUrl) {
+              setProfilePic(p.avatarUrl);
+              localStorage.setItem("profileImage", p.avatarUrl);
+            }
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          // fallback to list
+        }
+      }
+
+      try {
+        const res2 = await fetch(`${BASE_URL}/api/student/profile`, { headers: getHeaders() });
+        if (res2.ok) {
+          const json = await res2.json();
+          const profiles = json?.data?.profiles ?? json?.data ?? (Array.isArray(json) ? json : null);
+          if (Array.isArray(profiles) && profiles.length) {
+            let candidate = null;
+            const raw = localStorage.getItem("czc_auth");
+            let uid = null;
+            if (raw) {
+              try {
+                const p = JSON.parse(raw);
+                uid = p?.user?.id || p?.user?.uid || p?.userId || p?.id;
+              } catch {}
+            }
+            if (uid) {
+              candidate = profiles.find(
+                (x) =>
+                  String(x.studentId || x.id || x.username) === String(uid) ||
+                  String(x.username) === String(uid)
+              );
+            }
+            if (!candidate) candidate = profiles[0];
+            setProfile(candidate);
+            if (candidate?.displayName) {
+              setFullName(candidate.displayName);
+              localStorage.setItem("fullName", candidate.displayName);
+            }
+            if (candidate?.username) {
+              setUsername(candidate.username);
+              localStorage.setItem("username", candidate.username);
+            }
+            if (candidate?.avatarUrl) {
+              setProfilePic(candidate.avatarUrl);
+              localStorage.setItem("profileImage", candidate.avatarUrl);
+            }
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    } catch (e) {
+      console.error("loadProfile error", e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadRanking() {
+    try {
+      const headers = getHeaders();
+      const r = await fetch(`${BASE_URL}/api/ranking`, { headers });
+      if (r.ok) {
+        const json = await r.json();
+        setRanking(json);
+      }
+      const h = await fetch(`${BASE_URL}/api/ranking/history`, { headers });
+      if (h.ok) {
+        const json = await h.json();
+        setHistory(Array.isArray(json?.history) ? json.history : []);
+      }
+    } catch (e) {
+      console.warn("ranking fetch failed", e);
+    }
+  }
+
+  async function updateUserDocumentIfPossible(updatedUserFields = {}) {
+    try {
+      const uid = (user && (user.id || user.uid || user.userId)) || userId || (profile && (profile.studentId || profile.id));
+      if (!uid || Object.keys(updatedUserFields).length === 0) return;
+      const url = `${BASE_URL}/api/user/${uid}`;
+      const res = await fetch(url, {
+        method: "PATCH",
+        headers: getHeaders(),
+        body: JSON.stringify(updatedUserFields),
+      });
+      if (!res.ok) {
+        console.debug("updateUserDocumentIfPossible status", res.status);
+      }
+    } catch (err) {
+      console.debug("updateUserDocumentIfPossible error (ignored):", err?.message || err);
+    }
+  }
+
+  const handleSaveChanges = async () => {
+    const emptyFullName = fullName.trim() === "";
+    const emptyUsername = username.trim() === "";
+
+    setErrorsRequired({
+      fullName: emptyFullName,
+      username: emptyUsername,
+    });
+
+    if (emptyFullName || emptyUsername) {
+      setSuccess("");
+      setErrorRequired(true);
+      return null;
+    }
+
+    setErrorRequired(false);
+    setLoading(true);
+
+    const id = (profile && (profile.studentId || profile.id)) || userId;
+    const updated = {
+      displayName: fullName,
+      username: username,
+    };
+
+    if (profilePic) {
+      const p = String(profilePic);
+      if (p.startsWith("data:")) {
+        updated.avatarBase64 = p;
+      } else {
+        updated.avatarUrl =
+          p.startsWith("http") || p.startsWith("https")
+            ? p
+            : window.location.origin + (p.startsWith("/") ? p : "/" + p);
+      }
+    }
+
+    try {
+      const hasProfileId = profile && (profile.studentId != null || profile.id != null);
+
+      if (hasProfileId) {
+        const idToUse = profile.studentId ?? profile.id;
+        const res = await fetch(`${BASE_URL}/api/student/profile/${idToUse}`, {
+          method: "PATCH",
+          headers: getHeaders(),
+          body: JSON.stringify(updated),
+        });
+
+        const json = await res.json().catch(() => ({}));
+        if (res.ok && json?.success) {
+          const newProfile = json?.data?.profile || { ...profile, ...updated };
+          setProfile(newProfile);
+          localStorage.setItem("fullName", newProfile.displayName || fullName);
+          localStorage.setItem("username", newProfile.username || username);
+          localStorage.setItem("profileImage", newProfile.avatarUrl || profilePic);
+          setSuccess("Changes saved successfully!");
+
+          const userFields = {};
+          if (updated.username) userFields.username = updated.username;
+          if (updated.email) userFields.email = updated.email;
+          if (Object.keys(userFields).length) {
+            await updateUserDocumentIfPossible(userFields);
+          }
+
+          return newProfile;
+        } else {
+          setSuccess("");
+          alert(json?.message || `Failed to update profile (status ${res.status})`);
+          return null;
+        }
+      } else {
+        const res = await fetch(`${BASE_URL}/api/student/profile`, {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({ userId: id, ...updated }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok && json?.success) {
+          const createdProfile = json?.data?.profile || { ...updated };
+          setProfile(createdProfile);
+          localStorage.setItem("fullName", createdProfile.displayName || fullName);
+          localStorage.setItem("username", createdProfile.username || username);
+          localStorage.setItem("profileImage", createdProfile.avatarUrl || profilePic);
+          setSuccess("Profile created");
+
+          const userFields = {};
+          if (updated.username) userFields.username = updated.username;
+          if (updated.email) userFields.email = updated.email;
+          if (Object.keys(userFields).length) {
+            await updateUserDocumentIfPossible(userFields);
+          }
+
+          return createdProfile;
+        } else {
+          setSuccess("");
+          alert(json?.message || `Failed to create profile (status ${res.status})`);
+          return null;
+        }
+      }
+    } catch (e) {
+      console.error("handleSaveChanges error:", e);
+      alert("Network error while saving profile");
+      return null;
+    } finally {
+      setLoading(false);
+      setTimeout(() => setSuccess(""), 3000);
+    }
+  };
+
   const handleChangePassword = async () => {
     let newErrors = { current: false, new: false, confirm: false };
     let valid = true;
@@ -147,56 +354,94 @@ const ProfileSettings = () => {
       setErrors(newErrors);
       return;
     }
-    setPasswordChangeSuccess("Password changed successfully!");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmNewPassword("");
-    setErrors({ current: false, new: false, confirm: false });
-    setTimeout(() => {
-      setPasswordChangeSuccess("");
-      setShowPasswordModal(false);
-    }, 3000);
+
+    if (!profile && !userId) return alert("No profile loaded");
+
+    setLoading(true);
+    try {
+      const id = (profile && (profile.studentId || profile.id)) || userId;
+      const res = await fetch(`${BASE_URL}/api/student/profile/${id}`, {
+        method: "PATCH",
+        headers: getHeaders(),
+        body: JSON.stringify({ currentPassword, password: newPassword }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (json?.success) {
+        setPasswordChangeSuccess("Password changed successfully!");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+        setErrors({ current: false, new: false, confirm: false });
+        setTimeout(() => {
+          setPasswordChangeSuccess("");
+          setShowPasswordModal(false);
+        }, 2000);
+      } else {
+        alert(json?.message || "Failed to change password");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to change password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!profile && !userId) return alert("No profile loaded");
+    if (deleteConfirm !== "DELETE") return;
+    setLoading(true);
+    try {
+      const id = (profile && (profile.studentId || profile.id)) || userId;
+      const res = await fetch(`${BASE_URL}/api/student/profile/${id}`, {
+        method: "DELETE",
+        headers: getHeaders(),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (json?.success) {
+        alert("Account deleted");
+        setProfile(null);
+        setShowDeleteModal(false);
+        localStorage.removeItem("czc_auth");
+        window.location.href = "/";
+      } else {
+        alert(json?.message || "Failed to delete account");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete account");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFinishBook = async (bookId, title) => {
+    if (!bookId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/student/finish-book`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({ bookId, title }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (json?.success) {
+        alert("Book marked finished");
+        await loadRanking();
+        await loadProfile();
+      } else {
+        alert(json?.message || "Failed to mark book finished");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to mark finished");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleShow = (field) => {
     setShowPassword({ ...showPassword, [field]: !showPassword[field] });
-  };
-
-  const handleSaveChanges = () => {
-    const emptyFullName = fullName.trim() === "";
-    const emptyUsername = username.trim() === "";
-
-    setErrorsRequired({
-      fullName: emptyFullName,
-      username: emptyUsername,
-    });
-
-    if (emptyFullName || emptyUsername) {
-      setSuccess("");
-      setErrorRequired(true);
-      return;
-    }
-
-    setErrorRequired(false);
-
-    // Parse full name into first and last name
-    const nameParts = fullName.trim().split(/\s+/);
-    const firstName = nameParts[0] || "";
-    const lastName = nameParts.slice(1).join(" ") || "";
-
-    localStorage.setItem("fullName", fullName);
-    localStorage.setItem("firstName", firstName);
-    localStorage.setItem("lastName", lastName);
-    localStorage.setItem("username", username);
-
-    setSuccess("Changes saved successfully!");
-    setTimeout(() => setSuccess(""), 3000);
-  };
-
-  const handleDeleteAccount = () => {
-    alert("Account deleted.");
-    setDeleteConfirm("");
-    setShowDeleteModal(false);
   };
 
   const buttonHoverClasses = "transition transform hover:scale-105 hover:brightness-110";
@@ -224,7 +469,7 @@ const ProfileSettings = () => {
           <p className="font-semibold text-lg mb-2">Profile Picture</p>
 
           <div className="flex flex-col sm:flex-row items-center gap-6 mb-6">
-            <img src={profilePic || defaultAvatar} className="h-40 w-40 rounded-full object-cover" alt="" />
+            <img src={profilePic || "/default-avatar.jpg"} className="h-40 w-40 rounded-full object-cover" alt="" />
             <label className={`px-5 py-2 bg-[#8A0026] text-white rounded cursor-pointer ${buttonHoverClasses}`}>
               Upload Photo
               <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
@@ -246,17 +491,9 @@ const ProfileSettings = () => {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Enter your username"
-            className={`w-full bg-[#F7EFE6] border rounded p-3 mb-4 text-lg ${
+            className={`w-full bg-[#F7EFE6] border rounded p-3 mb-6 text-lg ${
               errorsRequired.username ? "border-red-500" : "border-gray-400"
             }`}
-          />
-
-          <label className="text-lg font-medium">Email</label>
-          <input
-            value={email}
-            disabled
-            placeholder="Your email"
-            className="w-full bg-gray-200 border border-gray-400 rounded p-3 mb-6 text-lg text-gray-600 cursor-not-allowed"
           />
 
           <div className="flex justify-center mb-4">
@@ -264,8 +501,9 @@ const ProfileSettings = () => {
               style={{ width: "calc(50% - 250px)" }}
               className={`py-3 rounded bg-[#8A0026] text-white font-semibold ${buttonHoverClasses}`}
               onClick={handleSaveChanges}
+              disabled={loading}
             >
-              Save Changes
+              {loading ? "Saving..." : "Save Changes"}
             </button>
           </div>
 
@@ -309,7 +547,7 @@ const ProfileSettings = () => {
               )}
 
               <img
-                src={selectedAvatar || profilePic || defaultAvatar}
+                src={selectedAvatar || profilePic || "/default-avatar.jpg"}
                 className="rounded-full object-cover relative z-10"
                 style={{ width: "210px", height: "210px" }}
                 alt=""
@@ -529,7 +767,7 @@ const ProfileSettings = () => {
                 </button>
 
                 <button
-                  disabled={deleteConfirm !== "DELETE"}
+                  disabled={deleteConfirm !== "DELETE" || loading}
                   onClick={handleDeleteAccount}
                   className={`flex-1 py-3 rounded font-semibold text-white transition ${
                     deleteConfirm === "DELETE"
@@ -537,7 +775,7 @@ const ProfileSettings = () => {
                       : "bg-red-300 cursor-not-allowed"
                   }`}
                 >
-                  Delete Account
+                  {loading ? "Deleting..." : "Delete Account"}
                 </button>
               </div>
 

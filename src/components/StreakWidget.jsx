@@ -1,11 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Flame, X, ChevronLeft, ChevronRight } from "lucide-react";
 
-const STORAGE_KEY = "streakActiveDays";
+const widgetSize = window.innerWidth < 480 ? 44 : 52;
+const storageKeyPos = "streakWidgetPosition";
+const storageKeyDays = "streakActiveDays";
+const BASE_URL = "https://czc-eight.vercel.app";
 
+// Local storage helpers (keeps your existing behavior)
 const loadStreaks = () => {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    return JSON.parse(localStorage.getItem(storageKeyDays)) || {};
   } catch {
     return {};
   }
@@ -13,7 +17,7 @@ const loadStreaks = () => {
 
 const saveStreaks = (data) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(storageKeyDays, JSON.stringify(data));
   } catch {}
 };
 
@@ -36,6 +40,26 @@ const setActiveForDate = async (dateKey, value) => {
   return all;
 };
 
+// Minimal auth helper — matches patterns used elsewhere in the frontend
+function getToken() {
+  try {
+    const raw = localStorage.getItem("czc_auth");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return (
+      parsed?.token ||
+      parsed?.accessToken ||
+      parsed?.idToken ||
+      parsed?.data?.token ||
+      parsed?.data?.accessToken ||
+      parsed?.user?.token ||
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
 const StreakWidget = () => {
   const [pos, setPos] = useState({ x: 20, y: 80 });
   const [dragging, setDragging] = useState(false);
@@ -44,8 +68,7 @@ const StreakWidget = () => {
   const startRef = useRef({ x: 0, y: 0, px: 0, py: 0 });
   const didDragRef = useRef(false);
 
-  const widgetSize = window.innerWidth < 480 ? 44 : 52;
-  const storageKeyPos = "streakWidgetPosition";
+  const clickEffectRef = useRef(false);
 
   const getDateKey = (d = new Date()) => {
     const y = d.getFullYear();
@@ -54,35 +77,124 @@ const StreakWidget = () => {
     return `${y}-${m}-${day}`;
   };
 
-  const clampPos = (x, y) => {
-    const maxX = window.innerWidth - widgetSize - 8;
-    const maxY = window.innerHeight - widgetSize - 8;
-    return {
-      x: Math.max(8, Math.min(x, maxX)),
-      y: Math.max(8, Math.min(y, maxY)),
-    };
-  };
-
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKeyPos);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed?.x && parsed?.y) setPos(parsed);
+        if (typeof parsed?.x === "number" && typeof parsed?.y === "number") {
+          setPos(parsed);
+        }
       }
     } catch {}
+
+    // load local streak map immediately
     getAllStreaks().then((all) => setActiveDays(all));
+
+    // If authenticated, fetch backend streak summary and mark corresponding days locally.
+    const token = getToken();
+    if (token) {
+      (async () => {
+        try {
+          const r = await fetch(`${BASE_URL}/api/streaks`, {
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          });
+          if (!r.ok) return;
+          const json = await r.json().catch(() => ({}));
+          const s = json?.data?.streak || json?.streak || null;
+          if (s && s.lastDate && Number(s.currentStreak) > 0) {
+            const items = {};
+            const last = new Date(s.lastDate);
+            for (let i = 0; i < Number(s.currentStreak); i++) {
+              const d = new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth(), last.getUTCDate()));
+              d.setUTCDate(d.getUTCDate() - i);
+              items[getDateKey(d)] = true;
+            }
+            // persist to localStorage via local helpers
+            let next = await getAllStreaks();
+            next = { ...next, ...items };
+            try {
+              localStorage.setItem(storageKeyDays, JSON.stringify(next));
+            } catch {}
+            setActiveDays(next);
+          }
+        } catch {
+          // ignore backend failures — keep local state
+        }
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     const key = getDateKey();
+    // If not active yet, mark today's active. If authenticated, call backend endpoint and then update local map.
     setActiveDays((prev) => {
       if (prev[key]) return prev;
-      setActiveForDate(key, true).then((next) => setActiveDays(next));
+
+      const token = getToken();
+      if (token) {
+        // Call backend to record session for today (post ISO date) and update local map from returned streak
+        (async () => {
+          try {
+            const body = { date: new Date().toISOString() };
+            const r = await fetch(`${BASE_URL}/api/streaks/session`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify(body),
+            });
+            if (r.ok) {
+              const json = await r.json().catch(() => ({}));
+              const updated = (json?.data && json.data.streak) || json?.data?.streak || json?.streak || json?.data || null;
+              if (updated && updated.lastDate && Number(updated.currentStreak) >= 1) {
+                const items = {};
+                const last = new Date(updated.lastDate);
+                for (let i = 0; i < Number(updated.currentStreak); i++) {
+                  const d = new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth(), last.getUTCDate()));
+                  d.setUTCDate(d.getUTCDate() - i);
+                  items[getDateKey(d)] = true;
+                }
+                // merge with existing local storage map
+                let next = await getAllStreaks();
+                next = { ...next, ...items };
+                try {
+                  localStorage.setItem(storageKeyDays, JSON.stringify(next));
+                } catch {}
+                setActiveDays(next);
+              } else {
+                // backend responded but with no streak detail — fallback to setting today locally
+                const next = { ...(await getAllStreaks()), [key]: true };
+                try {
+                  localStorage.setItem(storageKeyDays, JSON.stringify(next));
+                } catch {}
+                setActiveDays(next);
+              }
+            } else {
+              // backend rejected — fallback to local
+              const next = { ...(await getAllStreaks()), [key]: true };
+              try {
+                localStorage.setItem(storageKeyDays, JSON.stringify(next));
+              } catch {}
+              setActiveDays(next);
+            }
+          } catch {
+            const next = { ...(await getAllStreaks()), [key]: true };
+            try {
+              localStorage.setItem(storageKeyDays, JSON.stringify(next));
+            } catch {}
+            setActiveDays(next);
+          }
+        })();
+      } else {
+        // unauthenticated: use local storage only
+        setActiveForDate(key, true).then((next) => setActiveDays(next));
+      }
       return prev;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Drag handlers
   const onPointerDown = (e) => {
     e.preventDefault();
     startRef.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y };
@@ -92,33 +204,31 @@ const StreakWidget = () => {
 
   useEffect(() => {
     if (!dragging) return;
-
     const onMove = (e) => {
       const dx = e.clientX - startRef.current.x;
       const dy = e.clientY - startRef.current.y;
       if (Math.abs(dx) + Math.abs(dy) > 3) didDragRef.current = true;
-
       const nx = startRef.current.px + dx;
       const ny = startRef.current.py + dy;
-
-      setPos(clampPos(nx, ny));
+      const maxX = window.innerWidth - widgetSize - 8;
+      const maxY = window.innerHeight - widgetSize - 8;
+      setPos({ x: Math.max(8, Math.min(nx, maxX)), y: Math.max(8, Math.min(ny, maxY)) });
     };
-
     const onUp = () => {
       setDragging(false);
       try {
         localStorage.setItem(storageKeyPos, JSON.stringify(pos));
       } catch {}
+      // If it was a simple click (no drag), toggle calendar
       if (!didDragRef.current) setCalendarOpen((o) => !o);
     };
-
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp, { once: true });
-
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dragging, pos]);
 
   const now = new Date();
@@ -246,8 +356,7 @@ const StreakWidget = () => {
 
           <div className="grid grid-cols-7 gap-1">
             {cells.map((d, idx) => {
-              if (d === null) return <div key={idx} className="h-8" />;
-
+              if (d === null) return <div key={`e-${idx}`} className="h-8" />;
               const active = isActiveDay(d);
               const today =
                 d === now.getDate() &&

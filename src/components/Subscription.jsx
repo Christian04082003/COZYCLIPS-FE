@@ -42,6 +42,28 @@ const basePlans = [
   },
 ];
 
+const BASE_URL = "https://czc-eight.vercel.app";
+
+function getAuth() {
+  try {
+    const raw = localStorage.getItem("czc_auth");
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    const token =
+      parsed?.token ||
+      parsed?.accessToken ||
+      parsed?.idToken ||
+      parsed?.data?.token ||
+      parsed?.data?.accessToken ||
+      parsed?.user?.token;
+    const user = parsed?.user || parsed?.data?.user || parsed?.data || parsed;
+    const userId = user?.id || user?.uid || user?.userId || user?.studentId || parsed?.id;
+    return { token, userId, user };
+  } catch {
+    return {};
+  }
+}
+
 const Subscription = () => {
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [currentPlan, setCurrentPlan] = useState("free");
@@ -55,40 +77,337 @@ const Subscription = () => {
   });
 
   const [clickedButton, setClickedButton] = useState(null);
+  const [loading, setLoading] = useState(false);
+
   const clickEffect = (id) => {
     setClickedButton(id);
     setTimeout(() => setClickedButton(null), 150);
   };
 
-  const handleBuy = (planId) => {
-    clickEffect(planId);
-    const url = `https://your-backend.com/api/payment/checkout?plan=${planId}`;
-    window.open(url, "_blank");
+  const { token, userId } = getAuth();
+
+  useEffect(() => {
+    loadSubscription();
+    // eslint-disable-next-line
+  }, [userId]);
+
+  const getHeaders = () => {
+    const h = { "Content-Type": "application/json" };
+    if (token) h["Authorization"] = `Bearer ${token}`;
+    return h;
   };
 
-  const handleSelectPlan = (planId) => {
-    clickEffect(planId);
-    setCurrentPlan(planId);
+  async function fetchJson(url, opts = {}) {
+    const res = await fetch(url, opts);
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, json, status: res.status };
+  }
 
-    const selected = basePlans.find((p) => p.id === planId);
+  function computeEndDate(startIso, cycle) {
+    // startIso: ISO string; cycle: "monthly" | "annually"
+    try {
+      const start = startIso ? new Date(startIso) : new Date();
+      if (!start || isNaN(start.getTime())) return null;
+      const d = new Date(start.getTime());
+      if (cycle === "monthly") {
+        d.setMonth(d.getMonth() + 1);
+      } else if (cycle === "annually") {
+        d.setFullYear(d.getFullYear() + 1);
+      } else {
+        return null;
+      }
+      return d.toISOString();
+    } catch {
+      return null;
+    }
+  }
+
+  function isExpired(endIso) {
+    if (!endIso) return false; // treat missing end as non-expiring (free)
+    const now = Date.now();
+    const end = new Date(endIso).getTime();
+    if (isNaN(end)) return false;
+    return end <= now;
+  }
+
+  function formatDateIsoToLocal(dateIso) {
+    try {
+      if (!dateIso) return null;
+      const d = new Date(dateIso);
+      if (isNaN(d.getTime())) return dateIso;
+      return d.toLocaleDateString();
+    } catch {
+      return dateIso;
+    }
+  }
+
+  async function loadSubscription() {
+    setLoading(true);
+    try {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+      const headers = getHeaders();
+      const res = await fetchJson(`${BASE_URL}/api/subscription/${userId}`, { headers });
+      if (res.ok && res.json?.data) {
+        const data = res.json.data;
+        applyServerSubscription(data);
+        return;
+      }
+      // not found — keep defaults
+      setSubscription((s) => ({ ...s }));
+    } catch (err) {
+      console.warn("Failed loading subscription:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function applyServerSubscription(data) {
+    // data expected: { userId, plan, status, startDate, endDate, autoRenew, metadata, ... }
+    const serverPlan = (data?.plan || "Free").toLowerCase();
+
+    // find startIso from server fields or metadata
+    const startIso = data?.startDate || data?.metadata?.startDate || null;
+    // billing cycle preference: metadata.billingCycle or current UI billingCycle
+    const serverBillingCycle = data?.metadata?.billingCycle || billingCycle;
+    // prefer explicit server endDate / metadata.endDate, otherwise compute from startIso + cycle
+    const explicitEnd = data?.endDate || data?.metadata?.endDate || null;
+    const computedEnd = startIso ? computeEndDate(startIso, serverBillingCycle) : null;
+    const endIso = explicitEnd || computedEnd || null;
+
+    const expired = endIso ? isExpired(endIso) : false;
+    const requestedPlanId = data?.metadata?.requestedPlanId || null;
+
+    if (expired) {
+      // treat as free if expired
+      setCurrentPlan("free");
+      setSubscription({
+        plan: "Free",
+        startDate: startIso ? formatDateIsoToLocal(startIso) : data?.startDate || "Today",
+        expirationDate: "Expired",
+        status: data?.status || "expired",
+        autoRenew: false,
+      });
+      return;
+    }
+
+    // Determine UI label: show 'Teacher' if metadata asked for teacher, else if server says premium => premium
+    let uiPlanId = "free";
+    if (requestedPlanId === "teacher") uiPlanId = "teacher";
+    else if (serverPlan.includes("premium")) uiPlanId = "premium";
+    else uiPlanId = "free";
+
+    setCurrentPlan(uiPlanId);
 
     setSubscription({
-      plan: `${selected.name} - ${billingCycle}`,
-      startDate: "Today",
-      expirationDate: selected.type === "free" ? "Unlimited" : "Next Billing",
-      status: "Active",
-      autoRenew: selected.type !== "free",
+      plan:
+        requestedPlanId === "teacher"
+          ? "Teacher"
+          : data?.plan || (uiPlanId === "premium" ? "Premium" : "Free"),
+      startDate: startIso ? formatDateIsoToLocal(startIso) : (data?.startDate ? formatDateIsoToLocal(data.startDate) : "Today"),
+      expirationDate: endIso ? formatDateIsoToLocal(endIso) : (uiPlanId === "free" ? "Unlimited" : "Next Billing"),
+      status: data?.status || "active",
+      autoRenew: !!(data?.autoRenew || data?.metadata?.autoRenew),
     });
+  }
+
+  async function createSubscription(planId) {
+    if (!userId) return alert("You must be logged in to subscribe.");
+    // Prevent downgrading to free if active paid subscription exists
+    if (planId === "free" && currentPlan !== "free") {
+      const endIso = subscription?.expirationDate && subscription.expirationDate !== "Unlimited" && subscription.expirationDate !== "Expired"
+        ? subscription.expirationDate
+        : null;
+      if (endIso && !isExpired(new Date(endIso).toISOString())) {
+        return alert("You cannot switch to Free until your current paid subscription expires.");
+      }
+    }
+
+    setLoading(true);
+    try {
+      const nowIso = new Date().toISOString();
+      let endIso = null;
+      if (planId === "free") {
+        endIso = null; // unlimited
+      } else {
+        // paid plan: compute expiration based on billingCycle
+        endIso = computeEndDate(nowIso, billingCycle);
+      }
+
+      // backend expects plan 'Free' or 'Premium' — map teacher -> Premium
+      const planName = planId === "free" ? "Free" : "Premium";
+
+      // metadata to pass to backend so it can set start/end
+      const metadata = {
+        startDate: nowIso,
+        endDate: endIso,
+        autoRenew: planId !== "free",
+        billingCycle: billingCycle,
+        requestedPlanId: planId,
+      };
+
+      const headers = getHeaders();
+      const body = { plan: planName, metadata };
+
+      const res = await fetchJson(`${BASE_URL}/api/subscription`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok && res.json?.success) {
+        // backend returns created record; use server data but prefer showing teacher label when selected
+        const rec = res.json.data || res.json;
+        if (planId === "teacher") {
+          setCurrentPlan("teacher");
+          setSubscription({
+            plan: "Teacher",
+            startDate: formatDateIsoToLocal(metadata.startDate),
+            expirationDate: metadata.endDate ? formatDateIsoToLocal(metadata.endDate) : "Unlimited",
+            status: rec?.status || "pending",
+            autoRenew: !!metadata.autoRenew,
+          });
+        } else {
+          applyServerSubscription(rec);
+        }
+        alert(planId === "free" ? "Subscribed to free plan" : "Subscription created");
+        return rec;
+      } else {
+        alert(res.json?.message || `Failed to create subscription (status ${res.status})`);
+        return null;
+      }
+    } catch (err) {
+      console.error("createSubscription error:", err);
+      alert("Network error while creating subscription");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function patchSubscription(patch) {
+    if (!userId) return alert("You must be logged in.");
+    setLoading(true);
+    try {
+      const headers = getHeaders();
+      const res = await fetchJson(`${BASE_URL}/api/subscription/${userId}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify(patch),
+      });
+      if (res.ok && res.json?.success) {
+        const rec = res.json.data || res.json;
+        applyServerSubscription(rec);
+        return rec;
+      } else {
+        alert(res.json?.message || `Failed to update subscription (status ${res.status})`);
+        return null;
+      }
+    } catch (err) {
+      console.error("patchSubscription error:", err);
+      alert("Network error while updating subscription");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function deleteSubscription() {
+    if (!userId) return alert("You must be logged in.");
+    setLoading(true);
+    try {
+      const headers = getHeaders();
+      const res = await fetchJson(`${BASE_URL}/api/subscription/${userId}`, {
+        method: "DELETE",
+        headers,
+      });
+      if (res.ok && res.json?.success) {
+        setSubscription({
+          plan: "Free Plan",
+          startDate: "Today",
+          expirationDate: "Unlimited",
+          status: "cancelled",
+          autoRenew: false,
+        });
+        setCurrentPlan("free");
+        alert("Subscription cancelled");
+        return res.json.data || res.json;
+      } else {
+        alert(res.json?.message || `Failed to cancel subscription (status ${res.status})`);
+        return null;
+      }
+    } catch (err) {
+      console.error("deleteSubscription error:", err);
+      alert("Network error while cancelling subscription");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleBuy = async (planId) => {
+    clickEffect(planId);
+    if (!token) return alert("Please log in to subscribe.");
+    await createSubscription(planId);
   };
 
-  const handleRenew = () => {
+  const handleSelectPlan = async (planId) => {
+    clickEffect(planId);
+
+    // If user has active paid subscription and it's not expired, disallow switching to free
+    if (planId === "free" && currentPlan !== "free") {
+      const endIso = subscription?.expirationDate && subscription.expirationDate !== "Unlimited" && subscription.expirationDate !== "Expired"
+        ? new Date(subscription.expirationDate).toISOString()
+        : null;
+      if (endIso && !isExpired(endIso)) {
+        return alert("You cannot switch to Free until your current paid subscription expires.");
+      }
+    }
+
+    // If not logged in: local selection only
+    if (!token) {
+      setCurrentPlan(planId);
+      const selected = basePlans.find((p) => p.id === planId);
+      setSubscription({
+        plan: `${selected.name} - ${billingCycle}`,
+        startDate: "Today",
+        expirationDate: selected.type === "free" ? "Unlimited" : (billingCycle === "monthly" ? formatDateIsoToLocal(new Date(Date.now() + 30*24*60*60*1000).toISOString()) : formatDateIsoToLocal(new Date(new Date().setFullYear(new Date().getFullYear()+1)).toISOString())),
+        status: "local",
+        autoRenew: selected.type !== "free",
+      });
+      return;
+    }
+
+    // Authenticated: create or update backend
+    if (planId === "free") {
+      const rec = await createSubscription("free");
+      if (rec) {
+        setCurrentPlan("free");
+      }
+      return;
+    }
+
+    // paid plans: create subscription with computed expiration
+    await createSubscription(planId);
+  };
+
+  const handleRenew = async () => {
     clickEffect("renew");
-    alert("Renewing subscription…");
+    if (!token) return alert("You must be logged in to renew.");
+    // Renew: set startDate now and endDate based on billingCycle, set status active
+    const nowIso = new Date().toISOString();
+    const endIso = computeEndDate(nowIso, billingCycle);
+    const patch = { startDate: nowIso, endDate: endIso, status: "active", autoRenew: true };
+    const rec = await patchSubscription(patch);
+    if (rec) alert("Subscription renewed (status set to active).");
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     clickEffect("cancel");
-    alert("Cancelling subscription…");
+    if (!token) return alert("You must be logged in to cancel.");
+    await deleteSubscription();
   };
 
   const displayedPlans =
