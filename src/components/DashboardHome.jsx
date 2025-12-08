@@ -72,7 +72,7 @@ const DashboardHome = () => {
       }
 
       console.log("Fetching user data from backend...");
-      const response = await fetch("https://czc-eight.vercel.app/api/user/profile", {
+      const response = await fetch("https://czc-eight.vercel.app/api/student/profile", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
