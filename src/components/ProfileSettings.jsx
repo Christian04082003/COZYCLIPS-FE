@@ -12,6 +12,7 @@ import frame3 from "../assets/frame3.png";
 import frame4 from "../assets/frame4.png";
 import frame5 from "../assets/frame5.png";
 import frame6 from "../assets/frame6.png";
+import defaultAvatar from "../assets/dafault.webp";
 
 const ProfileSettings = () => {
   const [profilePic, setProfilePic] = useState(localStorage.getItem("profileImage") || null);
@@ -223,7 +224,7 @@ const ProfileSettings = () => {
           <p className="font-semibold text-lg mb-2">Profile Picture</p>
 
           <div className="flex flex-col sm:flex-row items-center gap-6 mb-6">
-            <img src={profilePic || "/default-avatar.jpg"} className="h-40 w-40 rounded-full object-cover" alt="" />
+            <img src={profilePic || defaultAvatar} className="h-40 w-40 rounded-full object-cover" alt="" />
             <label className={`px-5 py-2 bg-[#8A0026] text-white rounded cursor-pointer ${buttonHoverClasses}`}>
               Upload Photo
               <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
@@ -308,7 +309,7 @@ const ProfileSettings = () => {
               )}
 
               <img
-                src={selectedAvatar || profilePic || "/default-avatar.jpg"}
+                src={selectedAvatar || profilePic || defaultAvatar}
                 className="rounded-full object-cover relative z-10"
                 style={{ width: "210px", height: "210px" }}
                 alt=""
