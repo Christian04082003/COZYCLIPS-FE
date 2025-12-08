@@ -1,5 +1,4 @@
 import React from "react";
-import logo from "../assets/logo.png";
 import fbIcon from "../assets/fb.png";
 import googleIcon from "../assets/google.png";
 import twitterIcon from "../assets/twitter.png";
@@ -11,7 +10,7 @@ const Footer = () => {
 
         <div className="flex flex-col items-start gap-3">
           <img
-            src={logo}
+            src="/logo.png"
             alt="CozyClips Logo"
             className="h-10 w-auto sm:h-12 md:h-14 object-contain"
           />
