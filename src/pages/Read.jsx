@@ -115,20 +115,29 @@ const Read = () => {
 
   if (!book) return <p className="text-center mt-10">No book selected.</p>;
 
+  // Debug: Show what pages array contains
+  // Remove this after debugging
+  // console.log('Pages:', pages);
+
   // Desktop shows 2 pages at once (left and right)
   // Title page is page 0, content starts at page 1
   let leftPage, rightPage;
-  if (pageIndex === 0) {
+  if (pages.length === 0) {
+    leftPage = null;
+    rightPage = "No content loaded. Please try again later.";
+  } else if (pageIndex === 0) {
     // Title page
     leftPage = null;
-    rightPage = pages.length > 0 ? pages[0] : null;
+    rightPage = pages[0] || "No content loaded. Please try again later.";
   } else {
     // Content pages
-    leftPage = pages[(pageIndex - 1) * 2] || null;
-    rightPage = pages[(pageIndex - 1) * 2 + 1] || null;
+    const leftIdx = (pageIndex - 1) * 2;
+    const rightIdx = leftIdx + 1;
+    leftPage = pages[leftIdx] || null;
+    rightPage = pages[rightIdx] || null;
   }
-  
-  const totalDoublePages = Math.ceil((pages.length + 1) / 2); // +1 for title page
+
+  const totalDoublePages = pages.length === 0 ? 1 : Math.ceil((pages.length + 1) / 2); // +1 for title page
   const isLastPage = pageIndex === totalDoublePages - 1;
 
   const handleScroll = () => {

@@ -293,7 +293,7 @@ const Library = () => {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
       `}</style>

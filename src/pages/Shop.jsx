@@ -4,9 +4,16 @@ import { Gift, Star, Sparkles, Trophy, Flame, Zap, Brain, Clock, Shield, Book, T
 import { useSearchParams } from 'react-router-dom';
 import MoneyIcon from '../assets/coins.png';
 
-const BASE_URL = "https://czc-eight.vercel.app";
+// Use relative /api path for local development (proxied via vite.config.js)
+// For production, this will be served from the same domain
+const BASE_URL = process.env.NODE_ENV === 'production' 
+  ? "https://czc-eight.vercel.app" 
+  : "";
+const API_BASE = BASE_URL ? `${BASE_URL}/api` : "/api";
 
 const ICONS = { Gift, Star, Sparkles, Trophy, Flame, Zap, Brain, Clock, Shield, Book, Target };
+
+// --- Helper Functions and Components ---
 
 const getRarityColor = (rarity) => {
   const colors = {
@@ -74,6 +81,8 @@ const SuccessDialog = ({ open, message, onClose }) => {
   );
 };
 
+// --- Main Shop Component ---
+
 const Shop = () => {
   const [userCoins, setCoins] = useState(0);
   const [activeTab, setActiveTab] = useState('abilities');
@@ -90,6 +99,7 @@ const Shop = () => {
   const [purchasedAbilities, setPurchasedAbilities] = useState([]);
   const [searchParams] = useSearchParams();
 
+  // Coin logic
   const addCoins = (amount) => {
     setCoins((c) => {
       const updated = c + amount;
@@ -108,6 +118,7 @@ const Shop = () => {
     });
   };
 
+  // Initial setup: load coins and check URL tab
   useEffect(() => {
     const storedCoins = localStorage.getItem("coins");
     if (storedCoins) setCoins(parseInt(storedCoins, 10));
@@ -116,19 +127,19 @@ const Shop = () => {
     setActiveTab(nextTab);
   }, [searchParams]);
 
+  // Data fetching logic with local fallback
   const fetchConfig = async (key) => {
     // Fetch from backend API
     if (key === 'abilities') {
       try {
-        const response = await fetch(`${BASE_URL}/api/shop`, {
+        const response = await fetch(`/shop`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
         });
         
         if (!response.ok) {
-          console.warn(`Failed to fetch abilities from ${BASE_URL}/api/shop: ${response.status}`);
-          // Fallback to local data
+          console.warn(`Failed to fetch abilities from ${BASE_URL}/shop: ${response.status}`);
+          // Fallback to local data on server error
           return [
             { id: 'double-xp', name: 'Double XP', cost: 500, rarity: 'rare', description: 'Earn double XP for 24 hours', icon: 'Zap' },
             { id: 'shield', name: 'Damage Shield', cost: 300, rarity: 'uncommon', description: 'Reduce challenge penalties', icon: 'Shield' },
@@ -142,11 +153,11 @@ const Shop = () => {
         }
         
         const result = await response.json();
-        // Map backend data to expected format
+        // Map backend data to expected format (assuming it returns an array of items)
         return result.data?.items || result.data || [];
       } catch (error) {
         console.error('Error fetching abilities from backend:', error);
-        // Fallback to local data
+        // Fallback to local data on network/parsing error
         return [
           { id: 'double-xp', name: 'Double XP', cost: 500, rarity: 'rare', description: 'Earn double XP for 24 hours', icon: 'Zap' },
           { id: 'shield', name: 'Damage Shield', cost: 300, rarity: 'uncommon', description: 'Reduce challenge penalties', icon: 'Shield' },
@@ -170,6 +181,7 @@ const Shop = () => {
     }
   };
 
+  // Buy ability handler
   const handleBuyAbility = (ability) => {
     if (userCoins < ability.cost) {
       setWarningMessage('Not enough coins!');
@@ -180,11 +192,13 @@ const Shop = () => {
     setConfirmOpen(true);
   };
 
+  // Open confirm dialog for coins
   const openConfirmCoins = (pkg) => {
     setConfirmData({ type: 'coins', item: pkg });
     setConfirmOpen(true);
   };
 
+  // Effect to load data on mount
   useEffect(() => {
     let isMounted = true;
     async function loadData() {
@@ -197,6 +211,7 @@ const Shop = () => {
 
         const pkgsWithIcons = pkgData.map((p) => {
           const Icon = ICONS[p.icon] || Gift;
+          // Calculate discounted price for display
           const discountedPrice = Math.round(p.price * (1 - p.discountPercent / 100));
           return { ...p, icon: <Icon className="w-6 h-6" />, discountedPrice };
         });
@@ -218,9 +233,11 @@ const Shop = () => {
       }
     }
     loadData();
+    // Cleanup function for unmounting
     return () => { isMounted = false; };
   }, []);
 
+  // Handler for confirmed purchase
   const handleConfirmPurchase = () => {
     if (!confirmData) return;
 
@@ -231,6 +248,8 @@ const Shop = () => {
       setSuccessMessage(`You successfully purchased ${ability.name}!`);
     } else if (confirmData.type === 'coins') {
       const pkg = confirmData.item;
+      // Note: This is client-side coin adding. In a real app, coin purchases
+      // would be handled by a secure payment gateway on the backend.
       addCoins(pkg.coins);
       setSuccessMessage(`You successfully purchased ${pkg.coins} coins!`);
     }
@@ -239,12 +258,15 @@ const Shop = () => {
     setSuccessOpen(true);
   };
 
+  // --- Rendered JSX ---
+
   return (
     <div className="flex flex-col min-h-screen overflow-hidden">
       <DashboardNavbar />
       <div className="flex-1 overflow-auto min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 pt-16">
         <div className="max-w-[calc(100%-40px)] mx-auto px-4 py-8">
 
+          {/* Tab Buttons */}
           <div className="flex gap-3 mb-12 flex-wrap justify-start">
             <button
               onClick={() => setActiveTab('abilities')}
@@ -275,6 +297,7 @@ const Shop = () => {
             </button>
           </div>
 
+          {/* Abilities Shop Grid */}
           {!loading && !error && activeTab === 'abilities' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mt-5">
               {abilities.map((ability) => (
@@ -307,6 +330,7 @@ const Shop = () => {
             </div>
           )}
 
+          {/* Coin Packages Shop Grid */}
           {!loading && !error && activeTab === 'coins' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mt-5">
               {coinPackages.map((pkg) => (
@@ -352,6 +376,7 @@ const Shop = () => {
 
         </div>
 
+        {/* Dialogs */}
         <ConfirmDialog
           open={confirmOpen}
           title="Confirm Purchase"
