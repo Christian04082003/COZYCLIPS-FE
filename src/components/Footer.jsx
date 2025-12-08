@@ -1,4 +1,8 @@
 import React from "react";
+import logo from "../assets/logo.png";
+import fbIcon from "../assets/fb.png";
+import googleIcon from "../assets/google.png";
+import twitterIcon from "../assets/twitter.png";
 
 const Footer = () => {
   return (
@@ -7,7 +11,7 @@ const Footer = () => {
 
         <div className="flex flex-col items-start gap-3">
           <img
-            src="/logo.png"
+            src={logo}
             alt="CozyClips Logo"
             className="h-10 w-auto sm:h-12 md:h-14 object-contain"
           />
@@ -32,15 +36,15 @@ const Footer = () => {
           <h3 className="font-semibold mb-3">Contacts</h3>
           <ul className="space-y-3 text-sm text-gray-300">
             <li className="flex items-center gap-2 hover:text-gray-100 transition">
-              <img src="/src/assets/fb.png" alt="Facebook" className="h-5 w-5 object-contain" />
+              <img src={fbIcon} alt="Facebook" className="h-5 w-5 object-contain" />
               @CozyClipsStories
             </li>
             <li className="flex items-center gap-2 hover:text-gray-100 transition">
-              <img src="/src/assets/google.png" alt="Google" className="h-5 w-5 object-contain" />
+              <img src={googleIcon} alt="Google" className="h-5 w-5 object-contain" />
               @CozyClips
             </li>
             <li className="flex items-center gap-2 hover:text-gray-100 transition">
-              <img src="/src/assets/twitter.png" alt="Twitter" className="h-5 w-5 object-contain" />
+              <img src={twitterIcon} alt="Twitter" className="h-5 w-5 object-contain" />
               @CozyClips
             </li>
           </ul>

@@ -1,4 +1,10 @@
 import React, { useRef, useEffect } from "react";
+import interactive from "../assets/interactive.png";
+import gamified from "../assets/gamified.png";
+import leaderboards from "../assets/leaderboards.png";
+import assistance from "../assets/assistance.png";
+import conditions from "../assets/conditions.png";
+import progress from "../assets/progress.png";
 
 const Features = () => {
   const featuresRef = useRef(null);
@@ -24,32 +30,32 @@ const Features = () => {
 
   const features = [
     {
-      img: "/src/assets/interactive.png",
+      img: interactive,
       title: "Interactive Book Reading",
       text: "Learners can read stories with visual aids and adjustable text features that improve comprehension and engagement.",
     },
     {
-      img: "/src/assets/gamified.png",
+      img: gamified,
       title: "Gamified Challenges",
       text: "Learners complete fun challenges and quizzes that reward them with points, badges, and achievements.",
     },
     {
-      img: "/src/assets/leaderboards.png",
+      img: leaderboards,
       title: "Leaderboards & Achievements",
       text: "Earn badges and climb leaderboards, fostering friendly competition and motivation.",
     },
     {
-      img: "/src/assets/assistance.png",
+      img: assistance,
       title: "Word Assistance Tool",
       text: "Highlight and learn difficult words through pronunciation and definitions for better understanding.",
     },
     {
-      img: "/src/assets/conditions.png",
+      img: conditions,
       title: "Restrictions / Conditions",
       text: "Set reading conditions to help learners stay focused and improve comprehension.",
     },
     {
-      img: "/src/assets/progress.png",
+      img: progress,
       title: "Progress Tracking",
       text: "Track reading time, completed stories, and quiz scores through visual dashboards.",
     },

@@ -7,6 +7,7 @@ import About from '../components/About.jsx';
 import Devider1 from '../components/Devider1.jsx';
 import Devider2 from '../components/Devider2.jsx';
 import Footer from '../components/Footer.jsx';
+import bgImage from '../assets/BG-1.png';
 
 const Landing = () => {
   const navigate = useNavigate(); 
@@ -34,7 +35,7 @@ const Landing = () => {
         className="relative min-h-screen w-full overflow-hidden flex items-center justify-center"
       >
         <img
-          src="/src/assets/BG-1.png"
+          src={bgImage}
           alt="Background"
           className="absolute inset-0 w-full h-full object-cover object-center"
         />

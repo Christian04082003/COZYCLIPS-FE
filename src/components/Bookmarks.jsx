@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import DashboardNavbar from "./DashboardNavbar";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import bearImg from "../assets/bear.png";
 
 const Bookmarks = () => {
   const [profileImage, setProfileImage] = useState(null);
@@ -80,7 +81,7 @@ const Bookmarks = () => {
         <div className="rounded-xl p-3 sm:p-4 mt-5 shadow-lg border border-black/90 bg-[#F9F3EA] min-h-[81vh] max-h-[81vh] overflow-y-auto flex flex-col justify-start">
           {bookmarkedBooks.length === 0 ? (
             <div className="flex flex-col items-center justify-center mt-10 flex-grow">
-              <img src="/src/assets/bear.png" alt="No bookmarks" className="w-24 sm:w-28 opacity-70" />
+              <img src={bearImg} alt="No bookmarks" className="w-24 sm:w-28 opacity-70" />
               <p className="text-gray-500 mt-3 text-xs sm:text-sm">No Bookmarks Available</p>
             </div>
           ) : (

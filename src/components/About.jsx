@@ -1,4 +1,7 @@
 import React from "react";
+import webImg from "../assets/web.png";
+import goalImg from "../assets/goal.png";
+import teamImg from "../assets/team.png";
 
 const Aboutus = () => {
   return (
@@ -9,7 +12,7 @@ const Aboutus = () => {
 
         <div className="flex flex-col items-center">
           <img
-            src="/src/assets/web.png"
+            src={webImg}
             alt="About the Web"
             className="w-[340px] h-auto mb-6"
           />
@@ -24,7 +27,7 @@ const Aboutus = () => {
 
         <div className="flex flex-col items-center">
           <img
-            src="/src/assets/goal.png"
+            src={goalImg}
             alt="Our Goal"
             className="w-[340px] h-auto mb-6"
           />
@@ -39,7 +42,7 @@ const Aboutus = () => {
 
         <div className="flex flex-col items-center">
           <img
-            src="/src/assets/team.png"
+            src={teamImg}
             alt="Our Team"
             className="w-[340px] h-auto mb-6"
           />

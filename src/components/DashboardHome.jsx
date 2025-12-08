@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import DashboardNavbar from "./DashboardNavbar";
 import { Upload, Bookmark, BookmarkCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import dragonImg from "../assets/dragon.png";
+import bearImg from "../assets/bear.png";
 
 const rankStages = ["V", "IV", "III", "II", "I"];
 const rankOrder = ["Bronze", "Silver", "Gold", "Diamond", "Amethyst", "Challenger"];
@@ -412,7 +414,7 @@ const DashboardHome = () => {
           <div className="hidden md:flex relative w-1/2 p-8 flex-col justify-center z-10 text-left">
             <h3 className="text-xl font-semibold text-white drop-shadow-md mr-8">Unlock Stories. Level Up Learning.</h3>
             <p className="text-sm text-gray-200 mt-3 drop-shadow-sm mr-8">Story-driven games make reading fun and rewarding.</p>
-            <img src="/src/assets/dragon.png" alt="Dragon" className="absolute bottom-3 right-3 w-28 h-28 object-contain opacity-90" />
+            <img src={dragonImg} alt="Dragon" className="absolute bottom-3 right-3 w-28 h-28 object-contain opacity-90" />
           </div>
         </div>
 
@@ -420,7 +422,7 @@ const DashboardHome = () => {
           <div className="order-1 md:order-2 bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col h-auto md:h-[calc(100vh-300px)]">
             <h2 className="text-lg font-semibold p-4 sticky top-0 bg-white z-10 border-b border-gray-200 rounded-t-2xl">To-do</h2>
             <div className="overflow-auto flex-1 flex flex-col items-center justify-center p-4">
-              <img src="/src/assets/bear.png" className="w-16 md:w-20 opacity-50" />
+              <img src={bearImg} className="w-16 md:w-20 opacity-50" />
               <p className="text-gray-500 mt-3 text-sm">No Task Available</p>
             </div>
           </div>
