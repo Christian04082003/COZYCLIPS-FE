@@ -4,6 +4,8 @@ import { Gift, Star, Sparkles, Trophy, Flame, Zap, Brain, Clock, Shield, Book, T
 import { useSearchParams } from 'react-router-dom';
 import MoneyIcon from '../assets/coins.png';
 
+const BASE_URL = "https://czc-eight.vercel.app";
+
 const ICONS = { Gift, Star, Sparkles, Trophy, Flame, Zap, Brain, Clock, Shield, Book, Target };
 
 const getRarityColor = (rarity) => {
@@ -118,14 +120,14 @@ const Shop = () => {
     // Fetch from backend API
     if (key === 'abilities') {
       try {
-        const response = await fetch('/api/shop', {
+        const response = await fetch(`${BASE_URL}/api/shop`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
         });
         
         if (!response.ok) {
-          console.warn(`Failed to fetch abilities from /api/shop: ${response.status}`);
+          console.warn(`Failed to fetch abilities from ${BASE_URL}/api/shop: ${response.status}`);
           // Fallback to local data
           return [
             { id: 'double-xp', name: 'Double XP', cost: 500, rarity: 'rare', description: 'Earn double XP for 24 hours', icon: 'Zap' },
