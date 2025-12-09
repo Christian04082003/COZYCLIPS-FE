@@ -271,8 +271,8 @@ const Read = () => {
           <>
             {/* Left Page */}
             <div
-              className="flex-1 px-[50px] py-[50px] text-[17px] font-serif font-normal text-left break-words relative flex items-start overflow-y-auto"
-              style={{ lineHeight: "32px" }}
+              className="flex-1 px-[50px] py-[50px] text-[1.0625rem] font-serif font-normal text-left break-words relative flex items-start overflow-y-auto"
+              style={{ lineHeight: "1.88em" }}
             >
               {pageIndex === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full w-full text-center">
@@ -293,8 +293,8 @@ const Read = () => {
 
             {/* Right Page */}
             <div
-              className="flex-1 px-[50px] py-[50px] text-[17px] font-serif font-normal text-left break-words relative flex items-start overflow-y-auto"
-              style={{ lineHeight: "32px" }}
+              className="flex-1 px-[50px] py-[50px] text-[1.0625rem] font-serif font-normal text-left break-words relative flex items-start overflow-y-auto"
+              style={{ lineHeight: "1.88em" }}
             >
               {isLastPage ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-black/5 to-black/10 backdrop-blur-sm rounded-r-[24px] p-6">
@@ -391,7 +391,7 @@ const Read = () => {
               <div
                 key={idx}
                 className="snap-start w-full min-h-screen px-5 py-8 text-base font-serif break-words flex flex-col justify-start relative bg-white"
-                style={{ lineHeight: "28px" }}
+                style={{ lineHeight: "1.75em" }}
               >
                 <p className="whitespace-pre-line text-justify">{section}</p>
                 {idx === pages.length - 1 && (
