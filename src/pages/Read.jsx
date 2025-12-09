@@ -271,7 +271,7 @@ const Read = () => {
           <>
             {/* Left Page */}
             <div
-              className="flex-1 px-[50px] py-[50px] pb-[80px] text-[0.95rem] font-serif font-normal text-left break-words relative flex items-start"
+              className="flex-1 px-[50px] py-[50px] pb-[140px] text-[0.95rem] font-serif font-normal text-left break-words relative flex items-start"
               style={{ lineHeight: "1.6em", overflow: "hidden" }}
             >
               {pageIndex === 0 ? (
@@ -281,7 +281,7 @@ const Read = () => {
                 </div>
               ) : leftPage ? (
                 <div className="whitespace-pre-line w-full text-justify">
-                  {leftPage}
+                  <div style={{marginBottom: '32px'}}>{leftPage}</div>
                 </div>
               ) : (
                 <div className="w-full"></div>
@@ -293,7 +293,7 @@ const Read = () => {
 
             {/* Right Page */}
             <div
-              className="flex-1 px-[50px] py-[50px] pb-[80px] text-[0.95rem] font-serif font-normal text-left break-words relative flex items-start"
+              className="flex-1 px-[50px] py-[50px] pb-[140px] text-[0.95rem] font-serif font-normal text-left break-words relative flex items-start"
               style={{ lineHeight: "1.6em", overflow: "hidden" }}
             >
               {isLastPage ? (
@@ -320,7 +320,7 @@ const Read = () => {
                 </div>
               ) : rightPage ? (
                 <div className="whitespace-pre-line w-full text-justify">
-                  {rightPage}
+                  <div style={{marginBottom: '32px'}}>{rightPage}</div>
                 </div>
               ) : (
                 <div className="w-full"></div>
