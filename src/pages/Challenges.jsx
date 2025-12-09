@@ -10,9 +10,9 @@ const CHALLENGE_COMPLETION_KEY = "challengeCompletionDates";
 
 // Use StreakWidget's date key logic for consistency
 const getDateKey = (d = new Date()) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 };
 
@@ -40,7 +40,6 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [notification, setNotification] = useState(null);
   const [completionDates, setCompletionDates] = useState({});
-  const [readingWarriorStreak, setReadingWarriorStreak] = useState(0);
 
   // Helper to retrieve the authentication token from localStorage
   const getAuthToken = useCallback(() => {
@@ -95,7 +94,7 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
       const dateKey = getDateKey(current);
       if (completionDates[questId][dateKey]) {
         streak++;
-        current.setDate(current.getDate() - 1);
+        current.setUTCDate(current.getUTCDate() - 1);
       } else {
         break;
       }
@@ -103,33 +102,6 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
     
     return streak;
   }, [completionDates]);
-
-  // Helper to calculate Reading Warrior streak based on StreakWidget's daily activity
-  const calculateReadingWarriorStreak = useCallback(() => {
-    try {
-      const streakMap = JSON.parse(localStorage.getItem("streakActiveDays")) || {};
-      let streak = 0;
-      let current = new Date();
-      
-      // Count backwards from today, matching StreakWidget logic
-      while (true) {
-        const y = current.getFullYear();
-        const m = String(current.getMonth() + 1).padStart(2, "0");
-        const d = String(current.getDate()).padStart(2, "0");
-        const key = `${y}-${m}-${d}`;
-        
-        if (streakMap[key]) {
-          streak++;
-          current.setDate(current.getDate() - 1);
-        } else {
-          break;
-        }
-      }
-      return streak;
-    } catch {
-      return 0;
-    }
-  }, []);
 
   // Function to fetch the current coin balance
   const fetchCoinBalance = useCallback(async () => {
@@ -184,6 +156,7 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
       }
 
       const data = await response.json();
+      console.log("[Challenges] Raw quest data from backend:", data);
       
       // Remove duplicate challenges by title (keep first occurrence)
       const uniqueQuests = [];
@@ -298,10 +271,7 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
   useEffect(() => {
     const loadedDates = loadCompletionDates();
     setCompletionDates(loadedDates);
-    
-    // Also calculate initial Reading Warrior streak
-    setReadingWarriorStreak(calculateReadingWarriorStreak());
-  }, [calculateReadingWarriorStreak]);
+  }, []);
 
   // Initial load and quest refresh on focus/event
   useEffect(() => {
@@ -338,29 +308,6 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
   useEffect(() => {
     fetchCoinBalance();
   }, [fetchCoinBalance]); // Only depends on fetchCoinBalance
-
-  // Listen for streak updates from StreakWidget to keep Reading Warrior in sync
-  useEffect(() => {
-    const handleStreakUpdate = () => {
-      setReadingWarriorStreak(calculateReadingWarriorStreak());
-    };
-
-    // Update on custom event for streak changes
-    window.addEventListener("streakUpdated", handleStreakUpdate);
-    
-    // Also listen to storage changes (when StreakWidget updates localStorage)
-    const handleStorageChange = (e) => {
-      if (e.key === "streakActiveDays") {
-        handleStreakUpdate();
-      }
-    };
-    window.addEventListener("storage", handleStorageChange);
-
-    return () => {
-      window.removeEventListener("streakUpdated", handleStreakUpdate);
-      window.removeEventListener("storage", handleStorageChange);
-    };
-  }, [calculateReadingWarriorStreak]);
 
   // --- Helper Functions for Rendering ---
   
@@ -433,104 +380,95 @@ const Challenges = ({ userLevel = 1, completedBooks = 0 }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
             {quests.map((quest) => {
-              // For "7 Day Reading Warrior", use streak from StreakWidget's daily activity tracking
-              const isReadingWarrior = quest.title && quest.title.toLowerCase().includes("7 day reading warrior");
+              let consecutiveDays = getConsecutiveDays(quest.id);
+              let completedToday = isChallengeCompletedOnDate(quest.id);
               
-              // For Reading Warrior, use the consecutive days from streak tracking
-              // For other quests, use the completion date tracking
-              let consecutiveDays = isReadingWarrior ? readingWarriorStreak : getConsecutiveDays(quest.id);
-              let completedToday = isReadingWarrior ? readingWarriorStreak > 0 : isChallengeCompletedOnDate(quest.id);
-
               return (
-                <div
-                  key={quest.id}
-                  className="challenge-box bg-white text-gray-800 p-4 rounded-2xl shadow border border-gray-200 
-                            hover:shadow-xl hover:scale-105 transition-transform duration-300
-                            h-full flex flex-col justify-between"
-                >
-                  <div>
-                    {/* Title and Status Tag */}
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-xl font-bold flex-1">{quest.title}</h3>
-                      <span className={`px-2 py-1 rounded-full text-xs border whitespace-nowrap ml-2 ${getStatusColor(quest.status)}`}>
-                        {getStatusText(quest.status)}
+              <div
+                key={quest.id}
+                className="challenge-box bg-white text-gray-800 p-4 rounded-2xl shadow border border-gray-200 
+                          hover:shadow-xl hover:scale-105 transition-transform duration-300
+                          h-full flex flex-col justify-between"
+              >
+                <div>
+                  {/* Title and Status Tag */}
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-bold flex-1">{quest.title}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs border whitespace-nowrap ml-2 ${getStatusColor(quest.status)}`}>
+                      {getStatusText(quest.status)}
+                    </span>
+                  </div>
+
+                  <p className="text-gray-600 mb-2 text-sm">{quest.description}</p>
+
+                  {/* Streak Info */}
+                  {consecutiveDays > 0 && (
+                    <div className="bg-orange-100 border border-orange-300 rounded-lg p-2 mb-3 flex items-center gap-2">
+                      <span className="text-orange-500 font-bold text-lg">🔥</span>
+                      <span className="text-orange-700 text-sm font-semibold">
+                        {consecutiveDays} day{consecutiveDays !== 1 ? 's' : ''} streak{completedToday ? ' (today!)' : ''}
                       </span>
                     </div>
+                  )}
 
-                    <p className="text-gray-600 mb-2 text-sm">{quest.description}</p>
+                  {/* Progress Text */}
+                  <p className="text-sm text-gray-700 mb-1">
+                    Progress: <b>{quest.currentProgress >= 0 && quest.targetProgress > 0
+                      ? `${Math.floor(quest.currentProgress)}/${Math.floor(quest.targetProgress)}`
+                      : "Loading..."}
+                    </b>
+                  </p>
 
-                    {/* Streak Info */}
-                    {consecutiveDays > 0 && (
-                      <div className="bg-orange-100 border border-orange-300 rounded-lg p-2 mb-3 flex items-center gap-2">
-                        <span className="text-orange-500 font-bold text-lg">🔥</span>
-                        <span className="text-orange-700 text-sm font-semibold">
-                          {consecutiveDays} day{consecutiveDays !== 1 ? 's' : ''} streak{completedToday ? ' (today!)' : ''}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Progress Text */}
-                    <p className="text-sm text-gray-700 mb-1">
-                      Progress: <b>{isReadingWarrior
-                        ? `${consecutiveDays}/${quest.targetProgress}`
-                        : quest.currentProgress >= 0 && quest.targetProgress > 0
-                        ? `${Math.floor(quest.currentProgress)}/${Math.floor(quest.targetProgress)}`
-                        : "Loading..."}
-                      </b>
-                    </p>
-
-                    {/* Progress Bar */}
-                    <div className="w-full h-3 bg-blue-200 rounded-full progress-stroke mb-3">
-                      <div
-                        className="h-full bg-[#870022] rounded-full transition-all duration-300"
-                        style={{
-                          width: `${isReadingWarrior
-                            ? Math.min((consecutiveDays / quest.targetProgress) * 100, 100)
-                            : getProgressPercentage(
-                                quest.currentProgress,
-                                quest.targetProgress
-                              )}%`,
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {/* Reward and Action Button */}
-                  <div className="flex justify-between items-center mt-5">
-                    <span className="font-bold flex items-center gap-1 text-gray-800">
-                      <Coins className="text-yellow-500" />
-                      {quest.reward}
-                    </span>
-
-                    {quest.status === "ready_to_complete" && (
-                      <button
-                        onClick={() => completeQuest(quest.id)}
-                        disabled={completingQuestId === quest.id || completedToday}
-                        className="px-4 py-2 rounded-lg text-sm text-white bg-gradient-to-r from-yellow-600 to-red-600 
-                                  hover:from-yellow-700 hover:to-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {completedToday
-                          ? "Already Claimed Today"
-                          : completingQuestId === quest.id
-                          ? "Claiming..."
-                          : "Claim Reward"}
-                      </button>
-                    )}
-
-                    {quest.status === "in_progress" && (
-                      <p className="text-gray-600 font-semibold text-sm">
-                        Keep Going!
-                      </p>
-                    )}
-
-                    {quest.status === "completed" && (
-                      <p className="text-green-600 font-semibold flex items-center gap-1 text-sm">
-                        <CheckCircle size={18} /> Claimed
-                      </p>
-                    )}
+                  {/* Progress Bar */}
+                  <div className="w-full h-3 bg-blue-200 rounded-full progress-stroke mb-3">
+                    <div
+                      className="h-full bg-[#870022] rounded-full transition-all duration-300"
+                      style={{
+                        width: `${getProgressPercentage(
+                          quest.currentProgress,
+                          quest.targetProgress
+                        )}%`,
+                      }}
+                    ></div>
                   </div>
                 </div>
-              );
+
+                {/* Reward and Action Button */}
+                <div className="flex justify-between items-center mt-5">
+                  <span className="font-bold flex items-center gap-1 text-gray-800">
+                    <Coins className="text-yellow-500" />
+                    {quest.reward}
+                  </span>
+
+                  {quest.status === "ready_to_complete" && (
+                    <button
+                      onClick={() => completeQuest(quest.id)}
+                      disabled={completingQuestId === quest.id || completedToday}
+                      className="px-4 py-2 rounded-lg text-sm text-white bg-gradient-to-r from-yellow-600 to-red-600 
+                                hover:from-yellow-700 hover:to-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {completedToday
+                        ? "Already Claimed Today"
+                        : completingQuestId === quest.id
+                        ? "Claiming..."
+                        : "Claim Reward"}
+                    </button>
+                  )}
+
+                  {quest.status === "in_progress" && (
+                    <p className="text-gray-600 font-semibold text-sm">
+                      Keep Going!
+                    </p>
+                  )}
+
+                  {quest.status === "completed" && (
+                    <p className="text-green-600 font-semibold flex items-center gap-1 text-sm">
+                      <CheckCircle size={18} /> Claimed
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
             })}
           </div>
 

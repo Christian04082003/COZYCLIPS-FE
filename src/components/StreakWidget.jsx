@@ -28,7 +28,7 @@ const getMonthStreaks = async (year, month) => {
   const result = {};
   for (const key of Object.keys(all)) {
     const d = new Date(key);
-    if (d.getFullYear() === year && d.getMonth() === month) result[key] = true;
+    if (d.getUTCFullYear() === year && d.getUTCMonth() === month) result[key] = true;
   }
   return result;
 };
@@ -71,9 +71,9 @@ const StreakWidget = () => {
   const clickEffectRef = useRef(false);
 
   const getDateKey = (d = new Date()) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
     return `${y}-${m}-${day}`;
   };
 
@@ -102,14 +102,10 @@ const StreakWidget = () => {
           if (!r.ok) return;
           const json = await r.json().catch(() => ({}));
           const s = json?.data?.streak || json?.streak || null;
-          if (s && s.lastDate && Number(s.currentStreak) > 0) {
-            const items = {};
-            const last = new Date(s.lastDate);
-            for (let i = 0; i < Number(s.currentStreak); i++) {
-              const d = new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth(), last.getUTCDate()));
-              d.setUTCDate(d.getUTCDate() - i);
-              items[getDateKey(d)] = true;
-            }
+          if (s && s.activeDays && typeof s.activeDays === 'object') {
+            // Use the actual activeDays map from backend instead of reconstructing from currentStreak
+            // This preserves all active days, including non-consecutive ones
+            const items = { ...s.activeDays };
             // persist to localStorage via local helpers
             let next = await getAllStreaks();
             next = { ...next, ...items };
@@ -130,14 +126,19 @@ const StreakWidget = () => {
     const key = getDateKey();
     // If not active yet, mark today's active. If authenticated, call backend endpoint and then update local map.
     setActiveDays((prev) => {
-      if (prev[key]) return prev;
+      if (prev[key]) {
+        console.log(`[StreakWidget] Today (${key}) already in activeDays`);
+        return prev;
+      }
 
+      console.log(`[StreakWidget] Marking today (${key}) as active`);
       const token = getToken();
       if (token) {
         // Call backend to record session for today (post ISO date) and update local map from returned streak
         (async () => {
           try {
             const body = { date: new Date().toISOString() };
+            console.log(`[StreakWidget] POST /api/streaks/session`, body);
             const r = await fetch(`${BASE_URL}/api/streaks/session`, {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -145,15 +146,13 @@ const StreakWidget = () => {
             });
             if (r.ok) {
               const json = await r.json().catch(() => ({}));
+              console.log(`[StreakWidget] /api/streaks/session response:`, json);
               const updated = (json?.data && json.data.streak) || json?.data?.streak || json?.streak || json?.data || null;
-              if (updated && updated.lastDate && Number(updated.currentStreak) >= 1) {
-                const items = {};
-                const last = new Date(updated.lastDate);
-                for (let i = 0; i < Number(updated.currentStreak); i++) {
-                  const d = new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth(), last.getUTCDate()));
-                  d.setUTCDate(d.getUTCDate() - i);
-                  items[getDateKey(d)] = true;
-                }
+              if (updated && updated.activeDays && typeof updated.activeDays === 'object') {
+                // Use the actual activeDays map from backend instead of reconstructing from currentStreak
+                // This preserves all active days, including non-consecutive ones
+                const items = { ...updated.activeDays };
+                console.log(`[StreakWidget] Backend activeDays keys:`, Object.keys(items));
                 // merge with existing local storage map
                 let next = await getAllStreaks();
                 next = { ...next, ...items };
@@ -162,7 +161,8 @@ const StreakWidget = () => {
                 } catch {}
                 setActiveDays(next);
               } else {
-                // backend responded but with no streak detail — fallback to setting today locally
+                // backend responded but with no activeDays detail — fallback to setting today locally
+                console.log(`[StreakWidget] No activeDays in response, using fallback`);
                 const next = { ...(await getAllStreaks()), [key]: true };
                 try {
                   localStorage.setItem(storageKeyDays, JSON.stringify(next));
@@ -171,13 +171,15 @@ const StreakWidget = () => {
               }
             } else {
               // backend rejected — fallback to local
+              console.log(`[StreakWidget] Session endpoint failed (${r.status}), using fallback`);
               const next = { ...(await getAllStreaks()), [key]: true };
               try {
                 localStorage.setItem(storageKeyDays, JSON.stringify(next));
               } catch {}
               setActiveDays(next);
             }
-          } catch {
+          } catch (err) {
+            console.error(`[StreakWidget] Exception in session call:`, err);
             const next = { ...(await getAllStreaks()), [key]: true };
             try {
               localStorage.setItem(storageKeyDays, JSON.stringify(next));
@@ -187,6 +189,7 @@ const StreakWidget = () => {
         })();
       } else {
         // unauthenticated: use local storage only
+        console.log(`[StreakWidget] No auth token, using local only`);
         setActiveForDate(key, true).then((next) => setActiveDays(next));
       }
       return prev;
@@ -232,8 +235,8 @@ const StreakWidget = () => {
   }, [dragging, pos]);
 
   const now = new Date();
-  const [viewYear, setViewYear] = useState(now.getFullYear());
-  const [viewMonth, setViewMonth] = useState(now.getMonth());
+  const [viewYear, setViewYear] = useState(now.getUTCFullYear());
+  const [viewMonth, setViewMonth] = useState(now.getUTCMonth());
 
   useEffect(() => {
     getMonthStreaks(viewYear, viewMonth).then((monthData) =>
@@ -243,9 +246,9 @@ const StreakWidget = () => {
 
   const year = viewYear;
   const month = viewMonth;
-  const firstDay = new Date(year, month, 1);
-  const startWeekday = firstDay.getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(Date.UTC(year, month, 1));
+  const startWeekday = firstDay.getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const cells = [];
@@ -253,27 +256,27 @@ const StreakWidget = () => {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   const isActiveDay = (dnum) => {
-    const key = getDateKey(new Date(year, month, dnum));
+    const key = getDateKey(new Date(Date.UTC(year, month, dnum)));
     return !!activeDays[key];
   };
 
   const goPrevMonth = () => {
-    const d = new Date(year, month, 1);
-    d.setMonth(d.getMonth() - 1);
-    setViewYear(d.getFullYear());
-    setViewMonth(d.getMonth());
+    const d = new Date(Date.UTC(year, month, 1));
+    d.setUTCMonth(d.getUTCMonth() - 1);
+    setViewYear(d.getUTCFullYear());
+    setViewMonth(d.getUTCMonth());
   };
 
   const goNextMonth = () => {
-    const d = new Date(year, month, 1);
-    d.setMonth(d.getMonth() + 1);
-    setViewYear(d.getFullYear());
-    setViewMonth(d.getMonth());
+    const d = new Date(Date.UTC(year, month, 1));
+    d.setUTCMonth(d.getUTCMonth() + 1);
+    setViewYear(d.getUTCFullYear());
+    setViewMonth(d.getUTCMonth());
   };
 
   const goToday = () => {
-    setViewYear(now.getFullYear());
-    setViewMonth(now.getMonth());
+    setViewYear(now.getUTCFullYear());
+    setViewMonth(now.getUTCMonth());
   };
 
   const isPhone = window.innerWidth < 480;
