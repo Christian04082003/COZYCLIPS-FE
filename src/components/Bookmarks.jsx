@@ -61,13 +61,21 @@ const Bookmarks = () => {
             const bookResponse = await fetch(`${BASE_URL}/api/stories/${storyId}`);
             if (bookResponse.ok) {
               const bookData = await bookResponse.json();
+              const story = bookData.story || {};
+              
+              // Construct proper book object with all necessary fields
               return {
                 id: storyId,
-                title: bookData.story?.title || "Unknown",
-                author: bookData.story?.author || "Unknown",
-                cover_url: bookData.story?.cover_url || null,
-                formats: bookData.story?.formats || {},
-                authors: bookData.story?.authors || [],
+                title: story.title || "Unknown",
+                author: story.author || "Unknown",
+                cover_url: story.cover_url || `https://www.gutenberg.org/cache/epub/${storyId.replace("GB", "")}/pg${storyId.replace("GB", "")}.cover.medium.jpg`,
+                formats: {
+                  "text/plain; charset=utf-8": story.content ? "content" : null,
+                  "text/plain": story.content ? "content" : null,
+                  "image/jpeg": story.cover_url || `https://www.gutenberg.org/cache/epub/${storyId.replace("GB", "")}/pg${storyId.replace("GB", "")}.cover.medium.jpg`
+                },
+                authors: story.authors || [{ name: story.author || "Unknown" }],
+                content: story.content || null,
                 dateBookmarked: new Date().toISOString()
               };
             }
@@ -168,6 +176,13 @@ const Bookmarks = () => {
   };
 
   const openBook = (book) => {
+    // If book has content directly, just navigate
+    if (book.content || book.id) {
+      navigate("/read", { state: { book, link: null } });
+      return;
+    }
+    
+    // Otherwise check formats
     const formats = book.formats || {};
     const url =
       formats["text/plain; charset=utf-8"] ||
