@@ -96,7 +96,7 @@ const Read = () => {
           const paragraphs = plainText.split(/\n\n+|\n/).filter(p => p.trim().length > 0);
           const output = [];
           let currentPage = "";
-          const maxCharsPerPage = 2200; // Increased for better page utilization
+          const maxCharsPerPage = 1400; // Reduced significantly for no overlap
           
           for (let para of paragraphs) {
             // Split paragraph into sentences if it's too long
@@ -143,10 +143,6 @@ const Read = () => {
   }, [book, isMobile]);
 
   if (!book) return <p className="text-center mt-10">No book selected.</p>;
-
-  // Debug: Show what pages array contains
-  // Remove this after debugging
-  // console.log('Pages:', pages);
 
   // Desktop shows 2 pages at once (left and right)
   // Title page is page 0, content starts at page 1
@@ -271,8 +267,8 @@ const Read = () => {
           <>
             {/* Left Page */}
             <div
-              className="flex-1 px-[50px] py-[50px] pb-[200px] text-[0.95rem] font-serif font-normal text-left break-words relative flex items-start"
-              style={{ lineHeight: "1.6em", overflow: "hidden" }}
+              className="flex-1 px-[50px] pt-[50px] pb-[100px] text-[1.05rem] font-serif font-normal text-left break-words relative overflow-hidden"
+              style={{ lineHeight: "1.8em" }}
             >
               {pageIndex === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full w-full text-center">
@@ -281,7 +277,7 @@ const Read = () => {
                 </div>
               ) : leftPage ? (
                 <div className="whitespace-pre-line w-full text-justify">
-                  <div style={{marginBottom: '80px'}}>{leftPage}</div>
+                  {leftPage}
                 </div>
               ) : (
                 <div className="w-full"></div>
@@ -293,8 +289,8 @@ const Read = () => {
 
             {/* Right Page */}
             <div
-              className="flex-1 px-[50px] py-[50px] pb-[200px] text-[0.95rem] font-serif font-normal text-left break-words relative flex items-start"
-              style={{ lineHeight: "1.6em", overflow: "hidden" }}
+              className="flex-1 px-[50px] pt-[50px] pb-[100px] text-[1.05rem] font-serif font-normal text-left break-words relative overflow-hidden"
+              style={{ lineHeight: "1.8em" }}
             >
               {isLastPage ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-black/5 to-black/10 backdrop-blur-sm rounded-r-[24px] p-6">
@@ -320,7 +316,7 @@ const Read = () => {
                 </div>
               ) : rightPage ? (
                 <div className="whitespace-pre-line w-full text-justify">
-                  <div style={{marginBottom: '80px'}}>{rightPage}</div>
+                  {rightPage}
                 </div>
               ) : (
                 <div className="w-full"></div>
