@@ -55,14 +55,28 @@ const Read = () => {
         }
 
         let plainText = data.story.content
+          // Remove HTML tags
           .replace(/<[^>]*>/g, " ")
+          // Remove curly braces and their contents
           .replace(/\{[^}]*\}/g, " ")
+          // Remove square brackets and their contents
           .replace(/\[.*?\]/g, " ")
+          // Remove Project Gutenberg headers/footers
+          .replace(/\*\*\* START OF .*? \*\*\*/gi, "")
+          .replace(/\*\*\* END OF .*? \*\*\*/gi, "")
+          .replace(/Project Gutenberg.*?(\n|$)/gi, " ")
+          .replace(/Produced by.*?(\n|$)/gi, " ")
+          .replace(/Transcriber's Note.*?(\n|$)/gi, " ")
+          // Remove copyright notices
           .replace(/Copyright.*?(\d{4})?/gi, " ")
           .replace(/All rights reserved/gi, " ")
-          .replace(/Project Gutenberg License[\s\S]*?(\*\*\*|$)/gi, " ")
+          // Remove URLs
           .replace(/www\.[^\s]+/gi, " ")
           .replace(/https?:\/\/[^\s]+/gi, " ")
+          // Remove extra metadata
+          .replace(/Illustrated by.*?(\n|$)/gi, " ")
+          .replace(/etext was produced.*?(\n|$)/gi, " ")
+          // Clean up whitespace
           .replace(/\s+/g, " ")
           .trim();
 
@@ -70,7 +84,7 @@ const Read = () => {
           // Mobile: Simple word-based chunks
           const words = plainText.split(/\s+/);
           const sections = [];
-          const wordsPerSection = 200;
+          const wordsPerSection = 250;
           
           for (let i = 0; i < words.length; i += wordsPerSection) {
             const chunk = words.slice(i, i + wordsPerSection).join(" ");
@@ -78,21 +92,36 @@ const Read = () => {
           }
           setPages(sections);
         } else {
-          // Desktop: Fixed character limit per page with sentence boundaries
-          const sentences = plainText.match(/[^.!?]+[.!?]+/g) || [plainText];
+          // Desktop: Split by paragraphs first, then by sentences
+          const paragraphs = plainText.split(/\n\n+|\n/).filter(p => p.trim().length > 0);
           const output = [];
           let currentPage = "";
-          const maxCharsPerPage = 1800; // Conservative limit to prevent overflow
+          const maxCharsPerPage = 2200; // Increased for better page utilization
           
-          for (let i = 0; i < sentences.length; i++) {
-            const sentence = sentences[i].trim();
+          for (let para of paragraphs) {
+            // Split paragraph into sentences if it's too long
+            const sentences = para.match(/[^.!?]+[.!?]+/g) || [para];
             
-            // If adding this sentence exceeds the limit and we have content, start new page
-            if (currentPage.length > 0 && (currentPage.length + sentence.length + 1) > maxCharsPerPage) {
-              output.push(currentPage.trim());
-              currentPage = sentence + " ";
-            } else {
-              currentPage += sentence + " ";
+            for (let sentence of sentences) {
+              sentence = sentence.trim();
+              if (!sentence) continue;
+              
+              // If adding this sentence exceeds the limit and we have content, start new page
+              if (currentPage.length > 0 && (currentPage.length + sentence.length + 2) > maxCharsPerPage) {
+                output.push(currentPage.trim());
+                currentPage = sentence + " ";
+              } else {
+                // Add paragraph spacing
+                if (currentPage && !currentPage.endsWith("  ")) {
+                  currentPage += " ";
+                }
+                currentPage += sentence + " ";
+              }
+            }
+            
+            // Add paragraph break
+            if (currentPage && !currentPage.endsWith("\n\n")) {
+              currentPage += "\n\n";
             }
           }
           
@@ -242,8 +271,8 @@ const Read = () => {
           <>
             {/* Left Page */}
             <div
-              className="flex-1 px-[50px] py-[50px] text-[17px] font-serif font-normal text-left break-words relative flex items-start"
-              style={{ lineHeight: "32px", overflow: "hidden" }}
+              className="flex-1 px-[50px] py-[50px] text-[17px] font-serif font-normal text-left break-words relative flex items-start overflow-y-auto"
+              style={{ lineHeight: "32px" }}
             >
               {pageIndex === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full w-full text-center">
@@ -251,7 +280,7 @@ const Read = () => {
                   <h3 className="text-xl font-semibold text-gray-700">{book.authors?.[0]?.name || "Unknown Author"}</h3>
                 </div>
               ) : leftPage ? (
-                <div className="whitespace-pre-wrap w-full">
+                <div className="whitespace-pre-line w-full text-justify">
                   {leftPage}
                 </div>
               ) : (
@@ -264,8 +293,8 @@ const Read = () => {
 
             {/* Right Page */}
             <div
-              className="flex-1 px-[50px] py-[50px] text-[17px] font-serif font-normal text-left break-words relative flex items-start"
-              style={{ lineHeight: "32px", overflow: "hidden" }}
+              className="flex-1 px-[50px] py-[50px] text-[17px] font-serif font-normal text-left break-words relative flex items-start overflow-y-auto"
+              style={{ lineHeight: "32px" }}
             >
               {isLastPage ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-black/5 to-black/10 backdrop-blur-sm rounded-r-[24px] p-6">
@@ -290,7 +319,7 @@ const Read = () => {
                   </div>
                 </div>
               ) : rightPage ? (
-                <div className="whitespace-pre-wrap w-full">
+                <div className="whitespace-pre-line w-full text-justify">
                   {rightPage}
                 </div>
               ) : (
@@ -364,7 +393,7 @@ const Read = () => {
                 className="snap-start w-full min-h-screen px-5 py-8 text-base font-serif break-words flex flex-col justify-start relative bg-white"
                 style={{ lineHeight: "28px" }}
               >
-                <p className="whitespace-pre-wrap">{section}</p>
+                <p className="whitespace-pre-line text-justify">{section}</p>
                 {idx === pages.length - 1 && (
                   <div className="mt-12 flex flex-col items-center pb-8">
                     <div className="bg-gray-50 rounded-lg p-6 shadow-md text-center">
