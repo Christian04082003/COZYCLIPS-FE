@@ -59,12 +59,43 @@ const Library = () => {
         if (response.ok) {
           const data = await response.json();
           const bookmarkIds = data.bookmarks || [];
+          console.log("[Library] Fetched bookmark IDs from Firestore:", bookmarkIds);
           setBookmarkedIds(bookmarkIds);
           
-          // Sync with localStorage
-          const storedBookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
-          const syncedBookmarks = storedBookmarks.filter(b => bookmarkIds.includes(String(b.id)));
-          localStorage.setItem("bookmarks", JSON.stringify(syncedBookmarks));
+          // Fetch full book details for bookmarks if needed
+          if (bookmarkIds.length > 0) {
+            const storedBookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+            const existingIds = new Set(storedBookmarks.map(b => String(b.id)));
+            const missingIds = bookmarkIds.filter(id => !existingIds.has(String(id)));
+            
+            if (missingIds.length > 0) {
+              console.log("[Library] Fetching missing book details for:", missingIds);
+              const bookPromises = missingIds.map(async (storyId) => {
+                try {
+                  const bookResponse = await fetch(`https://czc-eight.vercel.app/api/stories/${storyId}`);
+                  if (bookResponse.ok) {
+                    const bookData = await bookResponse.json();
+                    return {
+                      id: storyId,
+                      title: bookData.story?.title || "Unknown",
+                      author: bookData.story?.author || "Unknown",
+                      cover_url: bookData.story?.cover_url || null,
+                      formats: bookData.story?.formats || {},
+                      authors: bookData.story?.authors || [],
+                      dateBookmarked: new Date().toISOString()
+                    };
+                  }
+                } catch (error) {
+                  console.error(`Error fetching book ${storyId}:`, error);
+                  return null;
+                }
+              });
+              
+              const newBooks = (await Promise.all(bookPromises)).filter(b => b !== null);
+              const allBookmarks = [...storedBookmarks, ...newBooks];
+              localStorage.setItem("bookmarks", JSON.stringify(allBookmarks));
+            }
+          }
         } else {
           // Fallback to localStorage
           const saved = JSON.parse(localStorage.getItem("bookmarks") || "[]");

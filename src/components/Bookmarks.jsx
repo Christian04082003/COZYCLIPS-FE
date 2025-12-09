@@ -46,15 +46,46 @@ const Bookmarks = () => {
         const data = await response.json();
         const bookmarkIds = data.bookmarks || [];
         
-        // Get full book details from localStorage
-        const storedBookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
-        const enrichedBookmarks = storedBookmarks.filter(b => bookmarkIds.includes(String(b.id)));
+        console.log("[Bookmarks] Fetched bookmark IDs from Firestore:", bookmarkIds);
         
-        setBookmarkedBooks(enrichedBookmarks);
+        if (bookmarkIds.length === 0) {
+          setBookmarkedBooks([]);
+          setBookmarkedIds([]);
+          localStorage.setItem("bookmarks", JSON.stringify([]));
+          return;
+        }
+        
+        // Fetch full book details from backend for each bookmark ID
+        const bookPromises = bookmarkIds.map(async (storyId) => {
+          try {
+            const bookResponse = await fetch(`${BASE_URL}/api/stories/${storyId}`);
+            if (bookResponse.ok) {
+              const bookData = await bookResponse.json();
+              return {
+                id: storyId,
+                title: bookData.story?.title || "Unknown",
+                author: bookData.story?.author || "Unknown",
+                cover_url: bookData.story?.cover_url || null,
+                formats: bookData.story?.formats || {},
+                authors: bookData.story?.authors || [],
+                dateBookmarked: new Date().toISOString()
+              };
+            }
+          } catch (error) {
+            console.error(`Error fetching book ${storyId}:`, error);
+            return null;
+          }
+        });
+        
+        const books = (await Promise.all(bookPromises)).filter(b => b !== null);
+        
+        console.log("[Bookmarks] Fetched full book details:", books);
+        
+        setBookmarkedBooks(books);
         setBookmarkedIds(bookmarkIds);
         
         // Sync localStorage with backend
-        localStorage.setItem("bookmarks", JSON.stringify(enrichedBookmarks));
+        localStorage.setItem("bookmarks", JSON.stringify(books));
       }
     } catch (error) {
       console.error("Error fetching bookmarks:", error);
