@@ -4,6 +4,8 @@ import { Bookmark, BookmarkCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import bearImg from "../assets/bear.png";
 
+const BASE_URL = "https://czc-eight.vercel.app";
+
 const Bookmarks = () => {
   const [profileImage, setProfileImage] = useState(null);
   const [bookmarkedBooks, setBookmarkedBooks] = useState([]);
@@ -13,33 +15,116 @@ const Bookmarks = () => {
   useEffect(() => {
     const savedImage = localStorage.getItem("profileImage");
     if (savedImage) setProfileImage(savedImage);
-    const storedBookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
-    const enrichedBookmarks = storedBookmarks.map((b) => ({
-      ...b,
-      dateBookmarked: b.dateBookmarked || new Date().toISOString(),
-    }));
-    setBookmarkedBooks(enrichedBookmarks);
-    setBookmarkedIds(enrichedBookmarks.map((b) => b.id));
+    fetchBookmarksFromBackend();
   }, []);
 
-  const toggleBookmark = (book) => {
+  const fetchBookmarksFromBackend = async () => {
+    try {
+      const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+      const token = authData.token;
+      
+      if (!token) {
+        // Fallback to localStorage if not authenticated
+        const storedBookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+        const enrichedBookmarks = storedBookmarks.map((b) => ({
+          ...b,
+          dateBookmarked: b.dateBookmarked || new Date().toISOString(),
+        }));
+        setBookmarkedBooks(enrichedBookmarks);
+        setBookmarkedIds(enrichedBookmarks.map((b) => b.id));
+        return;
+      }
+
+      const response = await fetch(`${BASE_URL}/api/student/bookmarks`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const bookmarkIds = data.bookmarks || [];
+        
+        // Get full book details from localStorage
+        const storedBookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+        const enrichedBookmarks = storedBookmarks.filter(b => bookmarkIds.includes(String(b.id)));
+        
+        setBookmarkedBooks(enrichedBookmarks);
+        setBookmarkedIds(bookmarkIds);
+        
+        // Sync localStorage with backend
+        localStorage.setItem("bookmarks", JSON.stringify(enrichedBookmarks));
+      }
+    } catch (error) {
+      console.error("Error fetching bookmarks:", error);
+      // Fallback to localStorage
+      const storedBookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+      setBookmarkedBooks(storedBookmarks);
+      setBookmarkedIds(storedBookmarks.map((b) => b.id));
+    }
+  };
+
+  const toggleBookmark = async (book) => {
     const stored = JSON.parse(localStorage.getItem("bookmarks") || "[]");
     const isBookmarked = bookmarkedIds.includes(book.id);
-    let updatedBookmarks;
-    if (isBookmarked) {
-      updatedBookmarks = stored.filter((b) => b.id !== book.id);
-      setBookmarkedIds((prev) => prev.filter((id) => id !== book.id));
-    } else {
-      const newBookmark = { ...book, dateBookmarked: new Date().toISOString() };
-      updatedBookmarks = [...stored, newBookmark];
-      setBookmarkedIds((prev) => [...prev, book.id]);
-    }
-    setBookmarkedBooks(updatedBookmarks);
-    localStorage.setItem("bookmarks", JSON.stringify(updatedBookmarks));
-    const el = document.getElementById(`bookmark-icon-${book.id}`);
-    if (el) {
-      el.classList.add("scale-up");
-      setTimeout(() => el.classList.remove("scale-up"), 300);
+    
+    try {
+      const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+      const token = authData.token;
+      
+      if (token) {
+        // Call backend API
+        const endpoint = isBookmarked 
+          ? `${BASE_URL}/api/student/bookmarks/remove`
+          : `${BASE_URL}/api/student/bookmarks/add`;
+        
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ storyId: String(book.id) })
+        });
+        
+        if (!response.ok) {
+          throw new Error("Failed to update bookmark in backend");
+        }
+      }
+      
+      // Update local state
+      let updatedBookmarks;
+      if (isBookmarked) {
+        updatedBookmarks = stored.filter((b) => b.id !== book.id);
+        setBookmarkedIds((prev) => prev.filter((id) => id !== book.id));
+      } else {
+        const newBookmark = { ...book, dateBookmarked: new Date().toISOString() };
+        updatedBookmarks = [...stored, newBookmark];
+        setBookmarkedIds((prev) => [...prev, book.id]);
+      }
+      
+      setBookmarkedBooks(updatedBookmarks);
+      localStorage.setItem("bookmarks", JSON.stringify(updatedBookmarks));
+      
+      const el = document.getElementById(`bookmark-icon-${book.id}`);
+      if (el) {
+        el.classList.add("scale-up");
+        setTimeout(() => el.classList.remove("scale-up"), 300);
+      }
+    } catch (error) {
+      console.error("Error toggling bookmark:", error);
+      // Still update localStorage as fallback
+      let updatedBookmarks;
+      if (isBookmarked) {
+        updatedBookmarks = stored.filter((b) => b.id !== book.id);
+        setBookmarkedIds((prev) => prev.filter((id) => id !== book.id));
+      } else {
+        const newBookmark = { ...book, dateBookmarked: new Date().toISOString() };
+        updatedBookmarks = [...stored, newBookmark];
+        setBookmarkedIds((prev) => [...prev, book.id]);
+      }
+      setBookmarkedBooks(updatedBookmarks);
+      localStorage.setItem("bookmarks", JSON.stringify(updatedBookmarks));
     }
   };
 

@@ -33,16 +33,57 @@ const DashboardHome = () => {
   const [completedProgress, setCompletedProgress] = useState(() => Number(localStorage.getItem("completedProgress")) || 0);
 
   const [suggested, setSuggested] = useState([]);
-  const [bookmarkedIds, setBookmarkedIds] = useState(() => {
-    const saved = localStorage.getItem("bookmarks");
-    return saved ? JSON.parse(saved).map((b) => b.id) : [];
-  });
+  const [bookmarkedIds, setBookmarkedIds] = useState([]);
 
   const [ratings, setRatings] = useState({});
   const [rank, setRank] = useState(JSON.parse(localStorage.getItem("rankData")) || { tier: "Bronze", stage: 1 });
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
+
+  // Fetch bookmarks from backend
+  useEffect(() => {
+    const fetchBookmarksFromBackend = async () => {
+      try {
+        const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+        const token = authData.token;
+        
+        if (!token) {
+          // Fallback to localStorage if not authenticated
+          const saved = localStorage.getItem("bookmarks");
+          setBookmarkedIds(saved ? JSON.parse(saved).map((b) => b.id) : []);
+          return;
+        }
+
+        const response = await fetch("https://czc-eight.vercel.app/api/student/bookmarks", {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const bookmarkIds = data.bookmarks || [];
+          setBookmarkedIds(bookmarkIds);
+          
+          // Sync with localStorage
+          const storedBookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+          const syncedBookmarks = storedBookmarks.filter(b => bookmarkIds.includes(String(b.id)));
+          localStorage.setItem("bookmarks", JSON.stringify(syncedBookmarks));
+        } else {
+          // Fallback to localStorage
+          const saved = localStorage.getItem("bookmarks");
+          setBookmarkedIds(saved ? JSON.parse(saved).map((b) => b.id) : []);
+        }
+      } catch (error) {
+        console.error("Error fetching bookmarks:", error);
+        const saved = localStorage.getItem("bookmarks");
+        setBookmarkedIds(saved ? JSON.parse(saved).map((b) => b.id) : []);
+      }
+    };
+    
+    fetchBookmarksFromBackend();
+  }, []);
 
   // Helper function to get auth token
   const getAuthToken = () => {
@@ -315,25 +356,68 @@ const DashboardHome = () => {
     }
   };
 
-  const toggleBookmark = (book) => {
+  const toggleBookmark = async (book) => {
     const stored = JSON.parse(localStorage.getItem("bookmarks") || "[]");
     const isBookmarked = bookmarkedIds.includes(book.id);
-    let updatedBookmarks;
 
-    if (isBookmarked) {
-      updatedBookmarks = stored.filter((b) => b.id !== book.id);
-      setBookmarkedIds((prev) => prev.filter((id) => id !== book.id));
-    } else {
-      updatedBookmarks = [...stored, book];
-      setBookmarkedIds((prev) => [...prev, book.id]);
-    }
-
-    localStorage.setItem("bookmarks", JSON.stringify(updatedBookmarks));
-
-    const el = document.getElementById(`bookmark-icon-${book.id}`);
-    if (el) {
-      el.classList.add("scale-up");
-      setTimeout(() => el.classList.remove("scale-up"), 300);
+    try {
+      const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+      const token = authData.token;
+      
+      if (token) {
+        // Call backend API
+        const endpoint = isBookmarked 
+          ? "https://czc-eight.vercel.app/api/student/bookmarks/remove"
+          : "https://czc-eight.vercel.app/api/student/bookmarks/add";
+        
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ storyId: String(book.id) })
+        });
+        
+        if (!response.ok) {
+          throw new Error("Failed to update bookmark in backend");
+        }
+      }
+      
+      // Update local state
+      let updatedBookmarks;
+      if (isBookmarked) {
+        updatedBookmarks = stored.filter((b) => b.id !== book.id);
+        setBookmarkedIds((prev) => prev.filter((id) => id !== book.id));
+      } else {
+        updatedBookmarks = [...stored, book];
+        setBookmarkedIds((prev) => [...prev, book.id]);
+      }
+      localStorage.setItem("bookmarks", JSON.stringify(updatedBookmarks));
+      
+      const el = document.getElementById(`bookmark-icon-${book.id}`);
+      if (el) {
+        el.classList.add("scale-up");
+        setTimeout(() => el.classList.remove("scale-up"), 300);
+      }
+    } catch (error) {
+      console.error("Error toggling bookmark:", error);
+      // Still update localStorage as fallback
+      let updatedBookmarks;
+      if (isBookmarked) {
+        updatedBookmarks = stored.filter((b) => b.id !== book.id);
+        setBookmarkedIds((prev) => prev.filter((id) => id !== book.id));
+      } else {
+        updatedBookmarks = [...stored, book];
+        setBookmarkedIds((prev) => [...prev, book.id]);
+      }
+      localStorage.setItem("bookmarks", JSON.stringify(updatedBookmarks));
+      
+      const el = document.getElementById(`bookmark-icon-${book.id}`);
+      if (el) {
+        el.classList.add("scale-up");
+        setTimeout(() => el.classList.remove("scale-up"), 300);
+      }
     }
   };
 

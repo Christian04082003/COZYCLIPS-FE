@@ -36,10 +36,48 @@ const Library = () => {
 
   const navigate = useNavigate();
 
-  // Load bookmarks
+  // Load bookmarks from backend
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("bookmarks") || "[]");
-    setBookmarkedIds(saved.map(b => b.id));
+    const fetchBookmarksFromBackend = async () => {
+      try {
+        const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+        const token = authData.token;
+        
+        if (!token) {
+          // Fallback to localStorage if not authenticated
+          const saved = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+          setBookmarkedIds(saved.map(b => b.id));
+          return;
+        }
+
+        const response = await fetch("https://czc-eight.vercel.app/api/student/bookmarks", {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const bookmarkIds = data.bookmarks || [];
+          setBookmarkedIds(bookmarkIds);
+          
+          // Sync with localStorage
+          const storedBookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+          const syncedBookmarks = storedBookmarks.filter(b => bookmarkIds.includes(String(b.id)));
+          localStorage.setItem("bookmarks", JSON.stringify(syncedBookmarks));
+        } else {
+          // Fallback to localStorage
+          const saved = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+          setBookmarkedIds(saved.map(b => b.id));
+        }
+      } catch (error) {
+        console.error("Error fetching bookmarks:", error);
+        const saved = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+        setBookmarkedIds(saved.map(b => b.id));
+      }
+    };
+    
+    fetchBookmarksFromBackend();
   }, []);
 
   // Fetch books from your working backend
@@ -103,20 +141,58 @@ const Library = () => {
     fetchBooks();
   }, []);
 
-  // Bookmark toggle
-  const toggleBookmark = (book) => {
+  // Bookmark toggle with backend sync
+  const toggleBookmark = async (book) => {
     const saved = JSON.parse(localStorage.getItem("bookmarks") || "[]");
     const exists = saved.some(b => b.id === book.id);
 
-    let updated;
-    if (exists) {
-      updated = saved.filter(b => b.id !== book.id);
-      setBookmarkedIds(prev => prev.filter(id => id !== book.id));
-    } else {
-      updated = [...saved, book];
-      setBookmarkedIds(prev => [...prev, book.id]);
+    try {
+      const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+      const token = authData.token;
+      
+      if (token) {
+        // Call backend API
+        const endpoint = exists 
+          ? "https://czc-eight.vercel.app/api/student/bookmarks/remove"
+          : "https://czc-eight.vercel.app/api/student/bookmarks/add";
+        
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ storyId: String(book.id) })
+        });
+        
+        if (!response.ok) {
+          throw new Error("Failed to update bookmark in backend");
+        }
+      }
+      
+      // Update local state
+      let updated;
+      if (exists) {
+        updated = saved.filter(b => b.id !== book.id);
+        setBookmarkedIds(prev => prev.filter(id => id !== book.id));
+      } else {
+        updated = [...saved, book];
+        setBookmarkedIds(prev => [...prev, book.id]);
+      }
+      localStorage.setItem("bookmarks", JSON.stringify(updated));
+    } catch (error) {
+      console.error("Error toggling bookmark:", error);
+      // Still update localStorage as fallback
+      let updated;
+      if (exists) {
+        updated = saved.filter(b => b.id !== book.id);
+        setBookmarkedIds(prev => prev.filter(id => id !== book.id));
+      } else {
+        updated = [...saved, book];
+        setBookmarkedIds(prev => [...prev, book.id]);
+      }
+      localStorage.setItem("bookmarks", JSON.stringify(updated));
     }
-    localStorage.setItem("bookmarks", JSON.stringify(updated));
   };
 
   // Split into rows
