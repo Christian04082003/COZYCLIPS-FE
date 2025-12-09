@@ -3,6 +3,7 @@ import DashboardNavbar from "./DashboardNavbar";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import bearImg from "../assets/bear.png";
+import bookPlaceholder from "../assets/bg-book.png";
 
 const BASE_URL = "https://czc-eight.vercel.app";
 
@@ -144,7 +145,9 @@ const Bookmarks = () => {
 
   const formatDate = (isoDate) => {
     try {
+      if (!isoDate) return "";
       const d = new Date(isoDate);
+      if (isNaN(d.getTime())) return "";
       return d.toLocaleDateString(undefined, {
         year: "numeric",
         month: "short",
@@ -179,10 +182,11 @@ const Bookmarks = () => {
                   onClick={() => openBook(book)}
                 >
                   <img
-                    src={book.formats?.["image/jpeg"] || "/src/assets/book.png"}
+                    src={book.cover_url || book.formats?.["image/jpeg"] || bookPlaceholder}
                     alt={book.title}
                     className="w-full h-36 object-cover rounded-md shadow-md"
                     style={{ border: "1px solid rgba(0,0,0,0.9)" }}
+                    onError={(e) => { e.target.src = bookPlaceholder; }}
                   />
                   <div className="mt-3 flex flex-col flex-grow justify-between">
                     <div className="text-left">
