@@ -370,6 +370,8 @@ const DashboardHome = () => {
           ? "https://czc-eight.vercel.app/api/student/bookmarks/remove"
           : "https://czc-eight.vercel.app/api/student/bookmarks/add";
         
+        console.log(`[DashboardHome] Calling bookmark API: ${endpoint} with storyId: ${book.id}`);
+        
         const response = await fetch(endpoint, {
           method: "POST",
           headers: {
@@ -380,8 +382,13 @@ const DashboardHome = () => {
         });
         
         if (!response.ok) {
-          throw new Error("Failed to update bookmark in backend");
+          const errorData = await response.json().catch(() => ({}));
+          console.error("[DashboardHome] Bookmark API error:", response.status, errorData);
+          throw new Error(errorData.message || "Failed to update bookmark in backend");
         }
+        
+        const result = await response.json();
+        console.log("[DashboardHome] Bookmark API success:", result);
       }
       
       // Update local state

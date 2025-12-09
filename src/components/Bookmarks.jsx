@@ -79,6 +79,8 @@ const Bookmarks = () => {
           ? `${BASE_URL}/api/student/bookmarks/remove`
           : `${BASE_URL}/api/student/bookmarks/add`;
         
+        console.log(`Calling bookmark API: ${endpoint} with storyId: ${book.id}`);
+        
         const response = await fetch(endpoint, {
           method: "POST",
           headers: {
@@ -89,8 +91,13 @@ const Bookmarks = () => {
         });
         
         if (!response.ok) {
-          throw new Error("Failed to update bookmark in backend");
+          const errorData = await response.json().catch(() => ({}));
+          console.error("Bookmark API error:", response.status, errorData);
+          throw new Error(errorData.message || "Failed to update bookmark in backend");
         }
+        
+        const result = await response.json();
+        console.log("Bookmark API success:", result);
       }
       
       // Update local state
