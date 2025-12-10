@@ -217,14 +217,55 @@ const Shop = () => {
   }, []);
 
   // Handler for confirmed purchase
-  const handleConfirmPurchase = () => {
+  const handleConfirmPurchase = async () => {
     if (!confirmData) return;
 
     if (confirmData.type === 'ability') {
       const ability = confirmData.item;
-      spendCoins(ability.cost);
-      setPurchasedAbilities([...purchasedAbilities, ability.id]);
-      setSuccessMessage(`You successfully purchased ${ability.name}!`);
+      
+      try {
+        // Get auth token from localStorage
+        const raw = localStorage.getItem("czc_auth");
+        const parsed = raw ? JSON.parse(raw) : {};
+        const token = parsed?.token || parsed?.accessToken || parsed?.idToken || parsed?.data?.token;
+        
+        if (!token) {
+          setWarningMessage('Authentication required to purchase items');
+          setWarningOpen(true);
+          setConfirmOpen(false);
+          return;
+        }
+
+        // Call backend to redeem item
+        const response = await fetch(`${API_BASE}/shop/redeem`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ itemId: ability.id })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          // Update local state on success
+          spendCoins(ability.cost);
+          setPurchasedAbilities([...purchasedAbilities, ability.id]);
+          setSuccessMessage(`You successfully purchased ${ability.name}!`);
+        } else {
+          setWarningMessage(data.message || 'Failed to purchase item');
+          setWarningOpen(true);
+          setConfirmOpen(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Error purchasing item:', err);
+        setWarningMessage('Error purchasing item: ' + err.message);
+        setWarningOpen(true);
+        setConfirmOpen(false);
+        return;
+      }
     } else if (confirmData.type === 'coins') {
       const pkg = confirmData.item;
       // Note: This is client-side coin adding. In a real app, coin purchases
