@@ -573,10 +573,10 @@ const QuizGame = () => {
                     <button
                       key={item.id}
                       onClick={handler}
-                      className="flex-1 lg:flex-none w-full border-2 border-[#145579] rounded-lg p-2 hover:bg-[#f4f4f4] transition-colors"
+                      className="flex-1 lg:flex-none w-full border-2 border-[#145579] rounded-lg p-3 hover:bg-gradient-to-r hover:from-[#145579] hover:to-[#0e3a52] hover:text-white hover:shadow-lg hover:scale-105 transition-all duration-200 transform hover:-translate-y-1 active:scale-95 cursor-pointer bg-white"
                     >
                       <p className="font-bold text-left text-[10px] sm:text-xs">{label}</p>
-                      <p className="text-gray-600 text-left text-[9px] sm:text-[10px]">{description}</p>
+                      <p className="text-gray-600 hover:text-gray-100 text-left text-[9px] sm:text-[10px]">{description}</p>
                     </button>
                   );
                 })
@@ -599,7 +599,7 @@ const QuizGame = () => {
                     <button
                       key={i}
                       onClick={() => handleSelect(opt)}
-                      className={`w-full flex items-start gap-2 sm:gap-3 border-2 rounded-lg p-2 sm:p-3 text-xs sm:text-base whitespace-normal break-words leading-snug ${selected === opt ? "bg-[#7d0000] text-white border-[#7d0000]" : "border-[#FFD96A] bg-white"}`}
+                      className={`w-full flex items-start gap-2 sm:gap-3 border-2 rounded-lg p-2 sm:p-3 text-xs sm:text-base whitespace-normal break-words leading-snug transition-all duration-200 transform hover:shadow-md hover:scale-102 cursor-pointer ${selected === opt ? "bg-[#7d0000] text-white border-[#7d0000] shadow-lg" : "border-[#FFD96A] bg-white hover:bg-yellow-50 hover:border-[#FFD96A]"}`}
                     >
                       <span className="font-bold text-sm mt-[2px]">{String.fromCharCode(65 + i)}</span>
                       <span className="text-left whitespace-normal break-words">{opt}</span>
