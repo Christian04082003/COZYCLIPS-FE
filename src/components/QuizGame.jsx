@@ -518,9 +518,13 @@ const QuizGame = () => {
 
                 <div className="space-y-2">
                   {displayedOptions.map((opt, i) => (
-                    <button key={i} onClick={() => handleSelect(opt)} className={`w-full flex items-center gap-2 sm:gap-3 border-2 rounded-lg p-2 sm:p-3 text-xs sm:text-base ${selected === opt ? "bg-[#7d0000] text-white border-[#7d0000]" : "border-[#FFD96A] bg-white"}`}>
-                      <span className="font-bold text-sm">{String.fromCharCode(65 + i)}</span>
-                      <span className="text-left">{opt}</span>
+                    <button
+                      key={i}
+                      onClick={() => handleSelect(opt)}
+                      className={`w-full flex items-start gap-2 sm:gap-3 border-2 rounded-lg p-2 sm:p-3 text-xs sm:text-base whitespace-normal break-words leading-snug ${selected === opt ? "bg-[#7d0000] text-white border-[#7d0000]" : "border-[#FFD96A] bg-white"}`}
+                    >
+                      <span className="font-bold text-sm mt-[2px]">{String.fromCharCode(65 + i)}</span>
+                      <span className="text-left whitespace-normal break-words">{opt}</span>
                     </button>
                   ))}
                 </div>
