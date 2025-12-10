@@ -573,10 +573,10 @@ const QuizGame = () => {
                     <button
                       key={item.id}
                       onClick={handler}
-                      className="flex-1 lg:flex-none w-full border-2 border-[#145579] rounded-lg p-3 hover:bg-gradient-to-r hover:from-[#145579] hover:to-[#0e3a52] hover:text-white hover:shadow-lg hover:scale-105 transition-all duration-200 transform hover:-translate-y-1 active:scale-95 cursor-pointer bg-white"
+                      className="flex-1 lg:flex-none w-full border-2 border-[#145579] rounded-lg p-2 hover:bg-[#f4f4f4] transition-colors"
                     >
                       <p className="font-bold text-left text-[10px] sm:text-xs">{label}</p>
-                      <p className="text-gray-600 hover:text-gray-100 text-left text-[9px] sm:text-[10px]">{description}</p>
+                      <p className="text-gray-600 text-left text-[9px] sm:text-[10px]">{description}</p>
                     </button>
                   );
                 })
