@@ -132,21 +132,13 @@ const Shop = () => {
     // Fetch from backend API
     if (key === 'abilities') {
       try {
-        const response = await fetch(`/shop`, {
+        const response = await fetch(`${API_BASE}/shop`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
         
         if (!response.ok) {
-          console.warn(`Failed to fetch abilities from ${BASE_URL}/shop: ${response.status}`);
-          // Fallback to local data on server error
-          return [
-            { id: 'double-coins', name: 'Double Coins', cost: 450, rarity: 'rare', description: '2x coins reward on next quiz', icon: 'Gift' },
-            { id: 'fifty-fifty', name: '50/50', cost: 300, rarity: 'uncommon', description: 'Remove two wrong options once', icon: 'Sparkles' },
-            { id: 'freeze-time', name: 'Freeze Time', cost: 400, rarity: 'epic', description: 'Pause the timer for 20s', icon: 'Clock' },
-            { id: 'skip-question', name: 'Skip Question', cost: 250, rarity: 'common', description: 'Skip a question without penalty', icon: 'Book' },
-            { id: 'extra-time', name: 'Extra Time', cost: 320, rarity: 'uncommon', description: 'Add 2 minutes to the quiz timer', icon: 'Clock' },
-          ];
+          throw new Error(`Failed to fetch abilities: ${response.status}`);
         }
         
         const result = await response.json();
@@ -154,14 +146,7 @@ const Shop = () => {
         return result.data?.items || result.data || [];
       } catch (error) {
         console.error('Error fetching abilities from backend:', error);
-        // Fallback to local data on network/parsing error
-        return [
-          { id: 'double-coins', name: 'Double Coins', cost: 450, rarity: 'rare', description: '2x coins reward on next quiz', icon: 'Gift' },
-          { id: 'fifty-fifty', name: '50/50', cost: 300, rarity: 'uncommon', description: 'Remove two wrong options once', icon: 'Sparkles' },
-          { id: 'freeze-time', name: 'Freeze Time', cost: 400, rarity: 'epic', description: 'Pause the timer for 20s', icon: 'Clock' },
-          { id: 'skip-question', name: 'Skip Question', cost: 250, rarity: 'common', description: 'Skip a question without penalty', icon: 'Book' },
-          { id: 'extra-time', name: 'Extra Time', cost: 320, rarity: 'uncommon', description: 'Add 2 minutes to the quiz timer', icon: 'Clock' },
-        ];
+        return [];
       }
     }
     
