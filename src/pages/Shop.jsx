@@ -229,6 +229,8 @@ const Shop = () => {
         const parsed = raw ? JSON.parse(raw) : {};
         const token = parsed?.token || parsed?.accessToken || parsed?.idToken || parsed?.data?.token;
         
+        console.log("Purchase attempt - Token exists:", !!token, "Item:", ability.id);
+        
         if (!token) {
           setWarningMessage('Authentication required to purchase items');
           setWarningOpen(true);
@@ -237,6 +239,7 @@ const Shop = () => {
         }
 
         // Call backend to redeem item
+        console.log("Calling redeem endpoint:", `${API_BASE}/shop/redeem`);
         const response = await fetch(`${API_BASE}/shop/redeem`, {
           method: 'POST',
           headers: {
@@ -247,6 +250,7 @@ const Shop = () => {
         });
 
         const data = await response.json();
+        console.log("Redeem response:", response.status, data);
 
         if (response.ok && data.success) {
           // Update local state on success
