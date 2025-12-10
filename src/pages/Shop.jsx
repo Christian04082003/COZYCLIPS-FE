@@ -141,14 +141,11 @@ const Shop = () => {
           console.warn(`Failed to fetch abilities from ${BASE_URL}/shop: ${response.status}`);
           // Fallback to local data on server error
           return [
-            { id: 'double-xp', name: 'Double XP', cost: 500, rarity: 'rare', description: 'Earn double XP for 24 hours', icon: 'Zap' },
-            { id: 'shield', name: 'Damage Shield', cost: 300, rarity: 'uncommon', description: 'Reduce challenge penalties', icon: 'Shield' },
-            { id: 'focus', name: 'Focus Boost', cost: 200, rarity: 'common', description: 'Highlight key words while reading', icon: 'Brain' },
-            { id: 'time-freeze', name: 'Time Freeze', cost: 400, rarity: 'epic', description: 'Pause timers during challenges', icon: 'Clock' },
-            { id: 'goal-lock', name: 'Goal Lock', cost: 250, rarity: 'uncommon', description: 'Lock target words to highlight', icon: 'Target' },
-            { id: 'bookworm', name: 'Reading Booster', cost: 150, rarity: 'common', description: 'Small XP boost on reading', icon: 'Book' },
-            { id: 'spark-burst', name: 'Spark Burst', cost: 350, rarity: 'rare', description: 'Instant hint in quizzes', icon: 'Sparkles' },
-            { id: 'flame-armor', name: 'Flame Armor', cost: 600, rarity: 'legendary', description: 'Negate one penalty in challenges', icon: 'Flame' },
+            { id: 'double-coins', name: 'Double Coins', cost: 450, rarity: 'rare', description: '2x coins reward on next quiz', icon: 'Gift' },
+            { id: 'fifty-fifty', name: '50/50', cost: 300, rarity: 'uncommon', description: 'Remove two wrong options once', icon: 'Sparkles' },
+            { id: 'freeze-time', name: 'Freeze Time', cost: 400, rarity: 'epic', description: 'Pause the timer for 20s', icon: 'Clock' },
+            { id: 'skip-question', name: 'Skip Question', cost: 250, rarity: 'common', description: 'Skip a question without penalty', icon: 'Book' },
+            { id: 'extra-time', name: 'Extra Time', cost: 320, rarity: 'uncommon', description: 'Add 2 minutes to the quiz timer', icon: 'Clock' },
           ];
         }
         
@@ -159,14 +156,11 @@ const Shop = () => {
         console.error('Error fetching abilities from backend:', error);
         // Fallback to local data on network/parsing error
         return [
-          { id: 'double-xp', name: 'Double XP', cost: 500, rarity: 'rare', description: 'Earn double XP for 24 hours', icon: 'Zap' },
-          { id: 'shield', name: 'Damage Shield', cost: 300, rarity: 'uncommon', description: 'Reduce challenge penalties', icon: 'Shield' },
-          { id: 'focus', name: 'Focus Boost', cost: 200, rarity: 'common', description: 'Highlight key words while reading', icon: 'Brain' },
-          { id: 'time-freeze', name: 'Time Freeze', cost: 400, rarity: 'epic', description: 'Pause timers during challenges', icon: 'Clock' },
-          { id: 'goal-lock', name: 'Goal Lock', cost: 250, rarity: 'uncommon', description: 'Lock target words to highlight', icon: 'Target' },
-          { id: 'bookworm', name: 'Reading Booster', cost: 150, rarity: 'common', description: 'Small XP boost on reading', icon: 'Book' },
-          { id: 'spark-burst', name: 'Spark Burst', cost: 350, rarity: 'rare', description: 'Instant hint in quizzes', icon: 'Sparkles' },
-          { id: 'flame-armor', name: 'Flame Armor', cost: 600, rarity: 'legendary', description: 'Negate one penalty in challenges', icon: 'Flame' },
+          { id: 'double-coins', name: 'Double Coins', cost: 450, rarity: 'rare', description: '2x coins reward on next quiz', icon: 'Gift' },
+          { id: 'fifty-fifty', name: '50/50', cost: 300, rarity: 'uncommon', description: 'Remove two wrong options once', icon: 'Sparkles' },
+          { id: 'freeze-time', name: 'Freeze Time', cost: 400, rarity: 'epic', description: 'Pause the timer for 20s', icon: 'Clock' },
+          { id: 'skip-question', name: 'Skip Question', cost: 250, rarity: 'common', description: 'Skip a question without penalty', icon: 'Book' },
+          { id: 'extra-time', name: 'Extra Time', cost: 320, rarity: 'uncommon', description: 'Add 2 minutes to the quiz timer', icon: 'Clock' },
         ];
       }
     }
