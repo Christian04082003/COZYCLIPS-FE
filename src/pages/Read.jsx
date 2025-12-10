@@ -13,6 +13,7 @@ const Read = () => {
   const [editingPage, setEditingPage] = useState(false);
   const [pageInput, setPageInput] = useState("");
   const [hasRecordedCompletion, setHasRecordedCompletion] = useState(false);
+  const [storyContent, setStoryContent] = useState("");
   const readingTimerRef = useRef(null);
 
   useEffect(() => {
@@ -79,6 +80,9 @@ const Read = () => {
           // Clean up whitespace
           .replace(/\s+/g, " ")
           .trim();
+
+        // Store the story content for quiz generation
+        setStoryContent(plainText);
 
         if (isMobile) {
           // Mobile: Simple word-based chunks
@@ -232,7 +236,7 @@ const Read = () => {
 
   const handleTakeQuiz = async () => {
     // Book completion is already recorded when reaching the last page
-    navigate("/dashboardlayout/quiz-game", { state: { book } });
+    navigate("/dashboardlayout/quiz-game", { state: { book, storyContent } });
   };
 
   const handleBookComplete = async () => {

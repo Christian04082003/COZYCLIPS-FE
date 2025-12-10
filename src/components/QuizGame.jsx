@@ -31,6 +31,14 @@ const QuizGame = () => {
   const navigate = useNavigate();
   const { book, storyContent } = location.state || {};
 
+  // Debug: Log what we received from navigation
+  useEffect(() => {
+    console.log("=== QuizGame Mounted ===");
+    console.log("Book:", book);
+    console.log("Story Content Length:", storyContent?.length || "undefined/0");
+    console.log("Story Content Preview:", storyContent ? storyContent.substring(0, 200) : "NO CONTENT");
+  }, []);
+
   const [quizData, setQuizData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -110,9 +118,14 @@ const QuizGame = () => {
           if (storyContent && storyContent.length >= 100) {
             // Send up to first 30000 characters to avoid payload issues
             contentToSend = storyContent.slice(0, 30000);
+            console.log("✅ Using provided story content, length:", contentToSend.length);
           } else {
             // If no content provided, backend will fetch it from Gutenberg
-            console.log("No story content provided, backend will fetch from Gutenberg");
+            console.log("⚠️ No story content provided (storyContent empty or too short), backend will fetch from Gutenberg");
+            // Try to fallback to fetching from backend if content is missing
+            if (!storyContent || storyContent.length < 100) {
+              console.warn("⚠️ Story content is missing or too short. Book ID:", book?.id);
+            }
           }
           
           console.log("Sending content length:", contentToSend.length);
@@ -213,6 +226,10 @@ const QuizGame = () => {
         }
 
         if (data.success && data.data && data.data.questions) {
+          console.log("✅ Valid quiz response received");
+          console.log("Number of questions:", data.data.questions.length);
+          console.log("First question:", data.data.questions[0]);
+          
           // Transform backend format to frontend format
           const transformedQuestions = data.data.questions.map((q, index) => {
             // Handle both formats: backend returns choices array
@@ -240,10 +257,15 @@ const QuizGame = () => {
             };
           });
 
+          console.log("✅ Transformed questions:", transformedQuestions.length);
           setQuizData(transformedQuestions);
           setAnswers(Array(transformedQuestions.length).fill(null));
           setDoubleCoinsUsed(Array(transformedQuestions.length).fill(false));
         } else {
+          console.error("❌ Invalid quiz data structure");
+          console.error("data.success:", data?.success);
+          console.error("data.data:", data?.data);
+          console.error("data.data.questions:", data?.data?.questions);
           throw new Error("Invalid quiz data received");
         }
 
