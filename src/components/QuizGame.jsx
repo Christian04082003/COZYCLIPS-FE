@@ -61,7 +61,7 @@ const QuizGame = () => {
   const [quizStartTime] = useState(Date.now());
   const [userInventory, setUserInventory] = useState([]); // User's purchased power-ups
 
-  // Fetch user's purchased power-ups from backend
+  // Fetch user's unlocked power-ups from Firestore via backend
   const fetchUserInventory = async (token, userId) => {
     try {
       const API_BASE = window.location.hostname === 'localhost' 
@@ -78,15 +78,16 @@ const QuizGame = () => {
 
       if (response.ok) {
         const data = await response.json();
-        const inventory = data.data?.inventory || [];
-        console.log("User inventory fetched:", inventory);
-        setUserInventory(inventory);
+        // Fetch unlockedItems from Firestore students table
+        const unlockedItems = data.data?.unlockedItems || [];
+        console.log("User unlocked items fetched from Firestore:", unlockedItems);
+        setUserInventory(unlockedItems);
       } else {
-        console.warn("Failed to fetch inventory:", response.status);
+        console.warn("Failed to fetch student data:", response.status);
         setUserInventory([]);
       }
     } catch (err) {
-      console.error("Error fetching user inventory:", err);
+      console.error("Error fetching user unlocked items:", err);
       setUserInventory([]);
     }
   };
