@@ -59,6 +59,37 @@ const QuizGame = () => {
   const [showResult, setShowResult] = useState(false);
   const [score, setScore] = useState(0);
   const [quizStartTime] = useState(Date.now());
+  const [userInventory, setUserInventory] = useState([]); // User's purchased power-ups
+
+  // Fetch user's purchased power-ups from backend
+  const fetchUserInventory = async (token, userId) => {
+    try {
+      const API_BASE = window.location.hostname === 'localhost' 
+        ? 'http://localhost:5000/api'
+        : 'https://czc-eight.vercel.app/api';
+      
+      const response = await fetch(`${API_BASE}/students/${userId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const inventory = data.data?.inventory || [];
+        console.log("User inventory fetched:", inventory);
+        setUserInventory(inventory);
+      } else {
+        console.warn("Failed to fetch inventory:", response.status);
+        setUserInventory([]);
+      }
+    } catch (err) {
+      console.error("Error fetching user inventory:", err);
+      setUserInventory([]);
+    }
+  };
 
   const question = quizData[current];
 
@@ -82,6 +113,9 @@ const QuizGame = () => {
           setLoading(false);
           return;
         }
+
+        // Fetch user inventory first
+        await fetchUserInventory(token, userId);
 
         // Validate storyId format
         if (!book.id || !book.id.match(/^GB\d+$/)) {
@@ -483,26 +517,45 @@ const QuizGame = () => {
           <div className="w-full lg:w-60 bg-white border border-[#7d0000] rounded-xl p-2 sm:p-3 flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible">
             <h2 className="text-sm sm:text-base font-bold mb-2 flex items-center gap-2 whitespace-nowrap">⚡ Power-Ups</h2>
             <div className="flex lg:flex-col gap-2">
-              <button onClick={handleDoubleCoins} className="flex-1 lg:flex-none w-full border-2 border-[#145579] rounded-lg p-2 hover:bg-[#f4f4f4] transition-colors">
-                <p className="font-bold text-left text-[10px] sm:text-xs">Double Coins</p>
-                <p className="text-gray-600 text-left text-[9px] sm:text-[10px]">2x coins</p>
-              </button>
-              <button onClick={handleFiftyFifty} className="flex-1 lg:flex-none w-full border-2 border-[#145579] rounded-lg p-2 hover:bg-[#f4f4f4] transition-colors">
-                <p className="font-bold text-left text-[10px] sm:text-xs">50/50</p>
-                <p className="text-gray-600 text-left text-[9px] sm:text-[10px]">Remove 2 wrong</p>
-              </button>
-              <button onClick={handleFreezeTime} className={`flex-1 lg:flex-none w-full border-2 rounded-lg p-2 hover:bg-[#f4f4f4] transition-colors ${freezeTime ? "border-green-600 text-green-600" : "border-[#145579]"}`}>
-                <p className="font-bold text-left text-[10px] sm:text-xs">Freeze Time</p>
-                <p className="text-gray-600 text-left text-[9px] sm:text-[10px]">{freezeTime ? "Frozen" : "Pause timer"}</p>
-              </button>
-              <button onClick={handleSkipQuestion} className="flex-1 lg:flex-none w-full border-2 border-[#145579] rounded-lg p-2 hover:bg-[#f4f4f4] transition-colors">
-                <p className="font-bold text-left text-[10px] sm:text-xs">Skip Question</p>
-                <p className="text-gray-600 text-left text-[9px] sm:text-[10px]">Go to next</p>
-              </button>
-              <button onClick={handleExtraTime} className="flex-1 lg:flex-none w-full border-2 border-[#145579] rounded-lg p-2 hover:bg-[#f4f4f4] transition-colors">
-                <p className="font-bold text-left text-[10px] sm:text-xs">Extra Time</p>
-                <p className="text-gray-600 text-left text-[9px] sm:text-[10px]">Add 2 minutes</p>
-              </button>
+              {userInventory.length === 0 ? (
+                <p className="text-gray-500 text-xs sm:text-sm">No power-ups purchased yet. Visit the shop!</p>
+              ) : (
+                userInventory.map((item) => {
+                  // Determine button handler based on item ID
+                  let handler = () => alert("Power-up not configured");
+                  let label = item.name;
+                  let description = item.description || "";
+
+                  switch (item.id) {
+                    case "double-coins":
+                      handler = handleDoubleCoins;
+                      break;
+                    case "fifty-fifty":
+                      handler = handleFiftyFifty;
+                      break;
+                    case "freeze-time":
+                      handler = handleFreezeTime;
+                      break;
+                    case "skip-question":
+                      handler = handleSkipQuestion;
+                      break;
+                    case "extra-time":
+                      handler = handleExtraTime;
+                      break;
+                  }
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={handler}
+                      className="flex-1 lg:flex-none w-full border-2 border-[#145579] rounded-lg p-2 hover:bg-[#f4f4f4] transition-colors"
+                    >
+                      <p className="font-bold text-left text-[10px] sm:text-xs">{label}</p>
+                      <p className="text-gray-600 text-left text-[9px] sm:text-[10px]">{description}</p>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
 
