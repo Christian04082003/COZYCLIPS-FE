@@ -113,11 +113,11 @@ const QuizGame = () => {
           console.log("Quiz not found, generating new quiz...");
           console.log("Story content length:", storyContent?.length || 0);
           
-          // Prepare content - send at least 2500 characters if available
+          // Prepare content - send as much as possible (capped)
           let contentToSend = "";
           if (storyContent && storyContent.length >= 100) {
-            // Send up to first 30000 characters to avoid payload issues
-            contentToSend = storyContent.slice(0, 30000);
+            // Send up to first 50000 characters to maximize usable text
+            contentToSend = storyContent.slice(0, 50000);
             console.log("✅ Using provided story content, length:", contentToSend.length);
           } else {
             // If no content provided, backend will fetch it from Gutenberg
