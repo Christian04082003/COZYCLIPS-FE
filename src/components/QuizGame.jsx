@@ -65,11 +65,11 @@ const QuizGame = () => {
   const fetchUserInventory = async (token, userId) => {
     try {
       const API_BASE = window.location.hostname === 'localhost' 
-        ? 'http://localhost:5000/api'
-        : 'https://czc-eight.vercel.app/api';
+        ? 'http://localhost:5000'
+        : 'https://czc-eight.vercel.app';
       
       // Fetch student data to get unlockedItems array
-      const studentResponse = await fetch(`${API_BASE}/student/profile/${userId}`, {
+      const studentResponse = await fetch(`${API_BASE}/api/student/profile/${userId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
