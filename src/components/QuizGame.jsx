@@ -68,7 +68,8 @@ const QuizGame = () => {
         ? 'http://localhost:5000/api'
         : 'https://czc-eight.vercel.app/api';
       
-      const response = await fetch(`${API_BASE}/students/${userId}`, {
+      // Fetch student data to get unlockedItems array
+      const studentResponse = await fetch(`${API_BASE}/students/${userId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -76,14 +77,37 @@ const QuizGame = () => {
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        // Fetch unlockedItems from Firestore students table
-        const unlockedItems = data.data?.unlockedItems || [];
-        console.log("User unlocked items fetched from Firestore:", unlockedItems);
+      if (!studentResponse.ok) {
+        console.warn("Failed to fetch student data:", studentResponse.status);
+        setUserInventory([]);
+        return;
+      }
+
+      const studentData = await studentResponse.json();
+      const unlockedItemIds = studentData.data?.unlockedItems || [];
+      console.log("User unlocked item IDs from Firestore:", unlockedItemIds);
+
+      if (unlockedItemIds.length === 0) {
+        setUserInventory([]);
+        return;
+      }
+
+      // Fetch shop items to get full details
+      const shopResponse = await fetch(`${API_BASE}/shop`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (shopResponse.ok) {
+        const shopData = await shopResponse.json();
+        const allItems = shopData.data || [];
+        
+        // Filter to only unlocked items
+        const unlockedItems = allItems.filter(item => unlockedItemIds.includes(item.id));
+        console.log("Matched unlocked items with details:", unlockedItems);
         setUserInventory(unlockedItems);
       } else {
-        console.warn("Failed to fetch student data:", response.status);
+        console.warn("Failed to fetch shop items");
         setUserInventory([]);
       }
     } catch (err) {
