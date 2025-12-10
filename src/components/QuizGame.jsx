@@ -69,7 +69,7 @@ const QuizGame = () => {
         : 'https://czc-eight.vercel.app/api';
       
       // Fetch student data to get unlockedItems array
-      const studentResponse = await fetch(`${API_BASE}/students/${userId}`, {
+      const studentResponse = await fetch(`${API_BASE}/student/profile/${userId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -84,7 +84,7 @@ const QuizGame = () => {
       }
 
       const studentData = await studentResponse.json();
-      const unlockedItemIds = studentData.data?.unlockedItems || [];
+      const unlockedItemIds = studentData.data?.profile?.unlockedItems || [];
       console.log("User unlocked item IDs from Firestore:", unlockedItemIds);
 
       if (unlockedItemIds.length === 0) {
