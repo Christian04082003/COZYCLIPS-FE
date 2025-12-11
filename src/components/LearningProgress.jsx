@@ -260,6 +260,7 @@ const LearningProgress = () => {
             }
           }
         } catch (e) {
+          // console.warn('loadRanking history error', e);
         }
       } catch (e) {
         // console.warn('loadRanking error', e);
