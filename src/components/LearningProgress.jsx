@@ -317,8 +317,8 @@ const LearningProgress = () => {
   // Calculate books display based on current rank
   // Each rank sublevel requires 10 books to advance
   // Cumulative: Bronze V = 0-10, Bronze IV = 10-20, Bronze III = 20-30, etc.
-  const rankOrder = ["Bronze", "Silver", "Gold", "Amethyst", "Diamond", "Challenger"];
-  const tierIndex = rankOrder.indexOf(rank.tier);
+  const rankOrderList = ["Bronze", "Silver", "Gold", "Diamond", "Amethyst", "Challenger"];
+  const tierIndex = rankOrderList.indexOf(rank.tier);
   const totalBooksForCurrentRank = (tierIndex * 5 + (5 - rank.stage)) * 10; // cumulative books at start of this rank
   const booksInCurrentRank = booksRead - totalBooksForCurrentRank; // books read since this rank started (0-9, should reach 10 to advance)
   const booksDisplayed = Math.max(0, booksInCurrentRank); // ensure non-negative for display
