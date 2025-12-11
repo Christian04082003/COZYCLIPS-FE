@@ -264,9 +264,19 @@ const ProfileSettings = () => {
         if (res.ok && json?.success) {
           const newProfile = json?.data?.profile || { ...profile, ...updated };
           setProfile(newProfile);
+          
+          // Update state and localStorage with the Firebase Storage URL from backend
+          if (newProfile.avatarUrl) {
+            setProfilePic(newProfile.avatarUrl);
+            localStorage.setItem("profileImage", newProfile.avatarUrl);
+          }
+          
           localStorage.setItem("fullName", newProfile.displayName || fullName);
           localStorage.setItem("username", newProfile.username || username);
-          localStorage.setItem("profileImage", newProfile.avatarUrl || profilePic);
+          
+          // Trigger storage event to update navbar
+          window.dispatchEvent(new Event('storage'));
+          
           setSuccess("Changes saved successfully!");
           return newProfile;
         } else {
@@ -284,9 +294,19 @@ const ProfileSettings = () => {
         if (res.ok && json?.success) {
           const createdProfile = json?.data?.profile || { ...updated };
           setProfile(createdProfile);
+          
+          // Update state and localStorage with the Firebase Storage URL from backend
+          if (createdProfile.avatarUrl) {
+            setProfilePic(createdProfile.avatarUrl);
+            localStorage.setItem("profileImage", createdProfile.avatarUrl);
+          }
+          
           localStorage.setItem("fullName", createdProfile.displayName || fullName);
           localStorage.setItem("username", createdProfile.username || username);
-          localStorage.setItem("profileImage", createdProfile.avatarUrl || profilePic);
+          
+          // Trigger storage event to update navbar
+          window.dispatchEvent(new Event('storage'));
+          
           setSuccess("Profile created");
           return createdProfile;
         } else {
