@@ -324,6 +324,10 @@ const LearningProgress = () => {
   const booksDisplayed = Math.max(0, booksInCurrentRank); // ensure non-negative for display
   const booksPercent = Math.min((booksDisplayed / 10) * 100, 100);
   
+  if (typeof window !== "undefined") {
+    console.log("[LearningProgress] Books calc:", { rank, tierIndex, totalBooksForCurrentRank, booksRead, booksInCurrentRank, booksDisplayed, booksPercent });
+  }
+  
   const currentRankImage = rankImages[rank.tier]?.[rank.stage - 1] || bronze1;
 
   return (
