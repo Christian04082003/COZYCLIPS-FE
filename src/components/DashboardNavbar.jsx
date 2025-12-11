@@ -39,14 +39,16 @@ const DashboardNavbar = ({ profileImage }) => {
     const storedCoins = localStorage.getItem("coins");
     if (storedCoins) setCoins(parseInt(storedCoins, 10));
     
-    // Also fetch coins from backend/Firestore
-    const fetchCoinsFromBackend = async () => {
+    // Fetch profile data (coins and avatar) from Firestore
+    const fetchProfileFromFirestore = async () => {
       try {
         const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
-        const token = authData.token;
+        const token = authData.token || authData?.data?.token || authData?.user?.token;
+        const user = authData?.user || authData?.data?.user || authData?.data || authData;
+        const userId = user?.id || user?.uid || user?.userId || user?.studentId || authData?.id;
         
-        if (token) {
-          const response = await fetch("https://czc-eight.vercel.app/api/user/coins", {
+        if (token && userId) {
+          const response = await fetch(`https://czc-eight.vercel.app/api/student/profile/${userId}`, {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -56,18 +58,29 @@ const DashboardNavbar = ({ profileImage }) => {
           
           if (response.ok) {
             const data = await response.json();
-            if (data.success && data.coins !== undefined) {
-              setCoins(data.coins);
-              localStorage.setItem("coins", String(data.coins));
+            const profile = data?.data?.profile;
+            
+            if (profile) {
+              // Update coins if available
+              if (profile.coins !== undefined) {
+                setCoins(profile.coins);
+                localStorage.setItem("coins", String(profile.coins));
+              }
+              
+              // Update avatar if available
+              if (profile.avatarUrl) {
+                setSavedImage(profile.avatarUrl);
+                localStorage.setItem("profileImage", profile.avatarUrl);
+              }
             }
           }
         }
       } catch (error) {
-        console.error("Error fetching coins from backend:", error);
+        console.error("Error fetching profile from Firestore:", error);
       }
     };
     
-    fetchCoinsFromBackend();
+    fetchProfileFromFirestore();
   }, []);
 
   useEffect(() => {
@@ -78,14 +91,46 @@ const DashboardNavbar = ({ profileImage }) => {
       }
     };
     
-    window.addEventListener("coinUpdate", handleCoinUpdate);
-    
-    // Also listen to localStorage changes for cross-tab sync
-    const handleStorage = () => {
-      const updated = localStorage.getItem("coins");
-      if (updated) setCoins(parseInt(updated, 10));
+    // Listen to localStorage changes and refetch from Firestore
+    const handleStorage = async () => {
+      const updatedCoins = localStorage.getItem("coins");
+      if (updatedCoins) setCoins(parseInt(updatedCoins, 10));
+      
+      const updatedImage = localStorage.getItem("profileImage");
+      if (updatedImage) setSavedImage(updatedImage);
+      
+      // Also refetch from Firestore to get latest data
+      try {
+        const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+        const token = authData.token || authData?.data?.token || authData?.user?.token;
+        const user = authData?.user || authData?.data?.user || authData?.data || authData;
+        const userId = user?.id || user?.uid || user?.userId || user?.studentId || authData?.id;
+        
+        if (token && userId) {
+          const response = await fetch(`https://czc-eight.vercel.app/api/student/profile/${userId}`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const profile = data?.data?.profile;
+            
+            if (profile?.avatarUrl) {
+              setSavedImage(profile.avatarUrl);
+              localStorage.setItem("profileImage", profile.avatarUrl);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error refetching profile:", error);
+      }
     };
     
+    window.addEventListener("coinUpdate", handleCoinUpdate);
     window.addEventListener("storage", handleStorage);
     
     return () => {
