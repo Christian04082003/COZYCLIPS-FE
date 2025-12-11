@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import dragonImg from "../assets/dragon.png";
 import bearImg from "../assets/bear.png";
 import bronzeImg from "../assets/bronze.png";
+import defaultAvatar from "../assets/dafault.webp";
 
 const rankStages = ["V", "IV", "III", "II", "I"];
 const rankOrder = ["Bronze", "Silver", "Gold", "Diamond", "Amethyst", "Challenger"];
@@ -583,22 +584,13 @@ const DashboardHome = () => {
           <div className="relative flex items-center w-full md:w-1/2 p-4 md:p-8 space-x-4 md:space-x-6 backdrop-blur-[2px] z-10">
             <label
               htmlFor="profile-upload-disabled"
-              className="relative w-20 h-20 md:w-40 md:h-32 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg flex items-center justify-center overflow-hidden border-2 border-purple-400"
+              className="relative w-20 h-20 md:w-40 md:h-32 rounded-lg flex items-center justify-center overflow-hidden border-2 border-purple-400"
             >
-              {profileImage ? (
-                <img src={profileImage} alt="Profile" className="object-cover w-full h-full" />
-              ) : (
-                <div className="flex flex-col items-center justify-center text-white">
-                  <div className="text-3xl md:text-5xl font-bold">
-                    {userData.displayName
-                      ?.split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()
-                      .slice(0, 2) || "👤"}
-                  </div>
-                </div>
-              )}
+              <img 
+                src={profileImage || defaultAvatar} 
+                alt="Profile" 
+                className="object-cover w-full h-full" 
+              />
               <input id="profile-upload-disabled" type="file" disabled className="hidden" />
             </label>
 

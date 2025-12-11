@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import coinIcon from "../assets/coins.png";
-import defaultAvatar from "../assets/avatar1.png";
+import defaultAvatar from "../assets/dafault.webp";
 
 const DashboardNavbar = ({ profileImage }) => {
   const [isOpen, setIsOpen] = useState(false);
