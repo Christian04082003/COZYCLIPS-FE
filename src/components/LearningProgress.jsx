@@ -293,15 +293,25 @@ const LearningProgress = () => {
         // console.warn('loadRanking error', e);
       }
     }
+    
     loadRanking();
+    
+    // Refresh ranking when books are read
+    const handleProgressUpdate = () => {
+      loadRanking();
+    };
+    window.addEventListener("progressUpdate", handleProgressUpdate);
+    window.addEventListener("bookOpened", handleProgressUpdate);
 
     return () => {
       mounted = false;
+      window.removeEventListener("progressUpdate", handleProgressUpdate);
+      window.removeEventListener("bookOpened", handleProgressUpdate);
     };
   }, []);
 
   const levelPercent = Math.min((level / levelGoal) * 100, 100);
-  const booksPercent = Math.min(((booksCompleted % booksGoal) / booksGoal) * 100, 100);
+  const booksPercent = Math.min((booksRead / booksGoal) * 100, 100);
   const currentRankImage = rankImages[rank.tier]?.[rank.stage - 1] || bronze1;
 
   return (
@@ -357,16 +367,13 @@ const LearningProgress = () => {
         </div>
 
         <div className="flex justify-between mb-2 mt-6 text-black font-bold text-base sm:text-lg">
-          <span>Books for Rank</span>
-          <span>{booksCompleted % 10}/{booksGoal}</span>
+          <span>Books Read</span>
+          <span>{booksRead}/{booksGoal}</span>
         </div>
 
         <div className="w-full h-5 sm:h-6 bg-blue-200 rounded-full">
           <div className="h-full bg-blue-600 rounded-full" style={{ width: `${booksPercent}%` }}></div>
         </div>
-
-        <div className="mt-3 sm:mt-4 text-black text-base sm:text-lg font-semibold">
-          {booksRead} total books read</div>
       </div>
     </div>
   );
