@@ -24,8 +24,7 @@ const DashboardHome = () => {
   const [profileImage, setProfileImage] = useState(localStorage.getItem("profileImage") || null);
 
   const [userData, setUserData] = useState({
-    firstName: localStorage.getItem("firstName") || "User",
-    lastName: localStorage.getItem("lastName") || "Student",
+    displayName: localStorage.getItem("displayName") || "User Student",
     email: localStorage.getItem("email") || "user@email.com",
   });
 
@@ -135,16 +134,18 @@ const DashboardHome = () => {
   // Fetch user data from backend/Firestore
   const fetchUserData = async () => {
     try {
-      const token = getAuthToken();
+      const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
+      const token = authData.token;
+      const userId = authData.userId;
       
-      if (!token) {
-        console.error("No authentication token found");
+      if (!token || !userId) {
+        console.error("No authentication token or userId found");
         setLoading(false);
         return;
       }
 
-      console.log("Fetching user data from backend...");
-      const response = await fetch("https://czc-eight.vercel.app/api/student/profile", {
+      console.log("Fetching student profile from Firestore...");
+      const response = await fetch(`https://czc-eight.vercel.app/api/student/profile/${userId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -154,57 +155,50 @@ const DashboardHome = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("User data from backend:", data);
+        console.log("Student profile from Firestore:", data);
         
-        if (data.success && data.user) {
-          const user = data.user;
+        if (data.profile) {
+          const profile = data.profile;
           
-          // Update userData state
+          // Update userData state with displayName from Firestore
           setUserData({
-            firstName: user.firstName || user.firstname || "User",
-            lastName: user.lastName || user.lastname || "Student",
-            email: user.email || "user@email.com"
+            displayName: profile.displayName || "User Student",
+            email: profile.email || "user@email.com"
           });
 
           // Save to localStorage
-          localStorage.setItem("firstName", user.firstName || user.firstname || "User");
-          localStorage.setItem("lastName", user.lastName || user.lastname || "Student");
-          localStorage.setItem("email", user.email || "user@email.com");
-          
-          // Optionally save full name
-          if (user.firstName && user.lastName) {
-            localStorage.setItem("fullName", `${user.firstName} ${user.lastName}`);
-          }
+          localStorage.setItem("displayName", profile.displayName || "User Student");
+          localStorage.setItem("email", profile.email || "user@email.com");
 
-          // Update profile image if available
-          if (user.profileImage) {
-            setProfileImage(user.profileImage);
-            localStorage.setItem("profileImage", user.profileImage);
+          // Update profile image if available (avatarUrl from Firestore)
+          if (profile.avatarUrl) {
+            setProfileImage(profile.avatarUrl);
+            localStorage.setItem("profileImage", profile.avatarUrl);
           }
 
           // Update level progress if available
-          if (user.levelProgress !== undefined) {
-            setLevelProgress(user.levelProgress);
-            localStorage.setItem("levelProgress", user.levelProgress);
+          if (profile.levelProgress !== undefined) {
+            setLevelProgress(profile.levelProgress);
+            localStorage.setItem("levelProgress", profile.levelProgress);
           }
 
           // Update completed progress if available
-          if (user.completedProgress !== undefined) {
-            setCompletedProgress(user.completedProgress);
-            localStorage.setItem("completedProgress", user.completedProgress);
+          if (profile.completedProgress !== undefined) {
+            setCompletedProgress(profile.completedProgress);
+            localStorage.setItem("completedProgress", profile.completedProgress);
           }
 
           // Update rank if available
-          if (user.rank) {
-            setRank(user.rank);
-            localStorage.setItem("rankData", JSON.stringify(user.rank));
+          if (profile.rank) {
+            setRank(profile.rank);
+            localStorage.setItem("rankData", JSON.stringify(profile.rank));
           }
         }
       } else {
-        console.error("Failed to fetch user data:", response.status);
+        console.error("Failed to fetch student profile:", response.status);
       }
     } catch (error) {
-      console.error("Error fetching user data:", error);
+      console.error("Error fetching student profile:", error);
     } finally {
       setLoading(false);
     }
@@ -216,14 +210,12 @@ const DashboardHome = () => {
     const savedImage = localStorage.getItem("profileImage");
     if (savedImage) setProfileImage(savedImage);
 
-    const savedFirstName = localStorage.getItem("firstName");
-    const savedLastName = localStorage.getItem("lastName");
+    const savedDisplayName = localStorage.getItem("displayName");
     const savedEmail = localStorage.getItem("email");
     
-    if (savedFirstName || savedLastName || savedEmail) {
+    if (savedDisplayName || savedEmail) {
       setUserData({
-        firstName: savedFirstName || "User",
-        lastName: savedLastName || "Student",
+        displayName: savedDisplayName || "User Student",
         email: savedEmail || "user@email.com"
       });
     }
@@ -499,7 +491,7 @@ const DashboardHome = () => {
 
             <div className="w-full">
               <h2 className="text-lg md:text-2xl font-semibold text-white drop-shadow-md">
-                {userData.firstName} {userData.lastName}
+                {userData.displayName}
               </h2>
 
               <div className="flex items-center text-xs md:text-sm text-gray-200 mt-1 space-x-2">
