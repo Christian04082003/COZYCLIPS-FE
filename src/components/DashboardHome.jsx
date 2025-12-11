@@ -223,16 +223,20 @@ const DashboardHome = () => {
             console.log("[DashboardHome] Updated profile image:", profile.avatarUrl);
           }
 
-          // Update level progress if available
+          // Update level progress if available from profile
+          // If not in profile, will be fetched from ranking API
           if (profile.levelProgress !== undefined) {
             setLevelProgress(profile.levelProgress);
             localStorage.setItem("levelProgress", profile.levelProgress);
+            console.log("[DashboardHome] Got levelProgress from profile:", profile.levelProgress);
           }
 
-          // Update completed progress if available
+          // Update completed progress (booksRead in current rank) if available from profile
+          // If not in profile, will be fetched from ranking API
           if (profile.completedProgress !== undefined) {
             setCompletedProgress(profile.completedProgress);
             localStorage.setItem("completedProgress", profile.completedProgress);
+            console.log("[DashboardHome] Got completedProgress from profile:", profile.completedProgress);
           }
 
           // Update rank if available
@@ -433,7 +437,7 @@ const DashboardHome = () => {
             setCompletedProgress(apiBooksInRank);
             localStorage.setItem("completedProgress", apiBooksInRank);
             
-            console.log("[DashboardHome] Updated state:", { tier, stage, level: computedLevel, completed: apiBooksInRank });
+            console.log("[DashboardHome] Updated from ranking API:", { tier, stage, level: computedLevel, completed: apiBooksInRank });
           }
         }
       } catch (e) {
