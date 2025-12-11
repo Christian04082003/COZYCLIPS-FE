@@ -129,29 +129,14 @@ const LearningProgress = () => {
   }, []);
 
   const upgradeRank = () => {
-    let { tier, stage } = rank;
-
-    if (stage < 5) stage += 1;
-    else {
-      const currentIndex = rankOrder.indexOf(tier);
-      if (currentIndex < rankOrder.length - 1) {
-        tier = rankOrder[currentIndex + 1];
-        stage = 1;
-      }
-    }
-
-    const newRank = { tier, stage };
-    setRank(newRank);
-    localStorage.setItem("rankData", JSON.stringify(newRank));
-
-    setLevel(0);
-    setBooksCompleted(0);
-
-    window.dispatchEvent(new Event("progressUpdate"));
+    // Rank upgrades are now handled by the backend based on cumulative progress
+    // This function is deprecated but kept for reference
+    console.log("[LearningProgress] Rank upgrade handled by backend");
   };
 
   useEffect(() => {
-    if (level >= 100 && booksCompleted >= 10) upgradeRank();
+    // Rank progression is now handled by backend ranking service
+    // No need to manually upgrade on frontend
   }, [level, booksCompleted]);
 
   // Fetch student profile from Firestore
@@ -248,18 +233,23 @@ const LearningProgress = () => {
         const rRes = await tryFetch([primaryRanking, fallbackRanking], { headers });
         if (rRes && rRes.ok) {
           const json = await rRes.json();
-          const tier = json?.tier || json?.currentRank?.split?.(" ")?.[0] || rank.tier;
-          const stage = Number(json?.sublevel || json?.sublevel === 0 ? json.sublevel : json?.sublevel) || json?.sublevel || rank.stage || 1;
+          console.log("[LearningProgress] Ranking API response:", json);
+          
+          const tier = json?.tier || rank.tier;
+          const stage = Number(json?.sublevel ?? rank.stage);
           const progress = Number(json?.progressInSublevel ?? 0);
           const computedLevel = Math.min(Math.round((progress / 10) * 100), 100);
 
+          console.log("[LearningProgress] Computed rank:", { tier, stage, progress, computedLevel });
+
           if (mounted) {
-            const newRank = { tier, stage: Math.max(1, Math.min(5, stage)) };
+            // Use exact values from API
+            const newRank = { tier, stage };
             setRank(newRank);
             localStorage.setItem("rankData", JSON.stringify(newRank));
 
             // Use returned totals - totalCompletedBooks is the cumulative count
-            const totalCompleted = Number(json?.totalCompletedBooks ?? booksCompleted);
+            const totalCompleted = Number(json?.totalCompletedBooks ?? 0);
             setBooksCompleted(totalCompleted);
             localStorage.setItem("completedProgress", totalCompleted);
 
@@ -271,9 +261,11 @@ const LearningProgress = () => {
             // Always set level based on progress in sublevel
             setLevel(computedLevel);
             localStorage.setItem("levelProgress", computedLevel);
+            
+            console.log("[LearningProgress] Updated state:", { tier, stage, level: computedLevel, totalCompleted });
           }
         } else {
-          // console.warn('Ranking endpoint failed', rRes && rRes.status);
+          console.warn('[LearningProgress] Ranking endpoint failed', rRes?.status);
         }
 
         const primaryHistory = `${BASE_URL}/api/ranking/history`;
