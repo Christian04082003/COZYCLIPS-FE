@@ -193,14 +193,8 @@ const Read = () => {
   // Record book completion when user reaches the end
   const recordBookCompletion = useCallback(async () => {
     console.log("Recording book completion:", book.id);
-    
-    const completed = Number(localStorage.getItem("completedProgress")) || 0;
-    localStorage.setItem("completedProgress", completed + 1);
-    const booksRead = Number(localStorage.getItem("booksRead")) || 0;
-    localStorage.setItem("booksRead", booksRead + 1);
-    window.dispatchEvent(new Event("storage"));
 
-    // Update quest progress on backend
+    // Call backend API to mark book as finished - this updates Firestore and handles ranking
     try {
       const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
       const token = authData.token;
@@ -209,7 +203,33 @@ const Read = () => {
       const startTime = Number(localStorage.getItem("readingStartTime")) || Date.now();
       
       if (token) {
-        const response = await fetch("https://czc-eight.vercel.app/api/quest/update-progress", {
+        // Mark book as finished in Firestore - this updates ranking automatically
+        console.log("[Read] Calling /api/student/book/finished for book:", book.id);
+        const finishResponse = await fetch("https://czc-eight.vercel.app/api/student/book/finished", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            bookId: String(book.id),
+            title: book.title || "Unknown"
+          })
+        });
+        
+        if (finishResponse.ok) {
+          const finishData = await finishResponse.json();
+          console.log("[Read] Book marked as finished, ranking updated:", finishData);
+          
+          // Dispatch events to update UI
+          window.dispatchEvent(new Event("progressUpdate"));
+          window.dispatchEvent(new Event("bookCompleted"));
+        } else {
+          console.error("[Read] Failed to mark book as finished:", finishResponse.status);
+        }
+
+        // Update quest progress
+        const questResponse = await fetch("https://czc-eight.vercel.app/api/quest/update-progress", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -222,17 +242,15 @@ const Read = () => {
           })
         });
         
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Book completion recorded on backend:", data);
-          // Dispatch event to notify Challenges page
-          window.dispatchEvent(new Event("bookCompleted"));
+        if (questResponse.ok) {
+          const questData = await questResponse.json();
+          console.log("[Read] Quest progress updated:", questData);
         }
       }
     } catch (error) {
       console.error("Error recording book completion:", error);
     }
-  }, [book.id]);
+  }, [book.id, book.title]);
 
   const handleTakeQuiz = async () => {
     // Book completion is already recorded when reaching the last page

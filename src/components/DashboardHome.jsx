@@ -474,10 +474,8 @@ const DashboardHome = () => {
       localStorage.setItem("readingStartTime", Date.now());
       localStorage.setItem("currentBookId", book.id);
 
-      const booksRead = Number(localStorage.getItem("booksRead")) || 0;
-      localStorage.setItem("booksRead", booksRead + 1);
-
-      window.dispatchEvent(new Event("progressUpdate"));
+      // Don't manually update localStorage - let the API handle it
+      window.dispatchEvent(new Event("bookOpened"));
 
       navigate("/read", { state: { book, link: url } });
     }
