@@ -280,6 +280,7 @@ const ProfileSettings = () => {
           // Trigger storage event to update navbar
           window.dispatchEvent(new Event('storage'));
           
+          console.log("[ProfileSettings] Profile updated successfully:", { displayName: newProfile.displayName, username: newProfile.username, avatarUrl: newProfile.avatarUrl });
           setSuccess("Changes saved successfully!");
           return newProfile;
         } else {
@@ -357,6 +358,7 @@ const ProfileSettings = () => {
       });
       const json = await res.json().catch(() => ({}));
       if (json?.success) {
+        console.log("[ProfileSettings] Password changed successfully for userId:", id);
         setPasswordChangeSuccess("Password changed successfully!");
         setCurrentPassword("");
         setNewPassword("");
@@ -367,6 +369,7 @@ const ProfileSettings = () => {
           setShowPasswordModal(false);
         }, 2000);
       } else {
+        console.error("[ProfileSettings] Password change failed:", json?.message);
         alert(json?.message || "Failed to change password");
       }
     } catch (e) {
@@ -389,12 +392,14 @@ const ProfileSettings = () => {
       });
       const json = await res.json().catch(() => ({}));
       if (json?.success) {
+        console.log("[ProfileSettings] Account deleted successfully for userId:", id);
         alert("Account deleted");
         setProfile(null);
         setShowDeleteModal(false);
         localStorage.removeItem("czc_auth");
         window.location.href = "/";
       } else {
+        console.error("[ProfileSettings] Account deletion failed:", json?.message);
         alert(json?.message || "Failed to delete account");
       }
     } catch (e) {
