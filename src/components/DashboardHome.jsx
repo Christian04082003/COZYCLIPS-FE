@@ -9,6 +9,28 @@ import bronzeImg from "../assets/bronze.png";
 const rankStages = ["V", "IV", "III", "II", "I"];
 const rankOrder = ["Bronze", "Silver", "Gold", "Diamond", "Amethyst", "Challenger"];
 
+const BASE_URL = "https://czc-eight.vercel.app";
+
+function getAuth() {
+  try {
+    const raw = localStorage.getItem("czc_auth");
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    const token =
+      parsed?.token ||
+      parsed?.accessToken ||
+      parsed?.idToken ||
+      parsed?.data?.token ||
+      parsed?.data?.accessToken ||
+      parsed?.user?.token;
+    const user = parsed?.user || parsed?.data?.user || parsed?.data || parsed;
+    const userId = user?.id || user?.uid || user?.userId || user?.studentId || parsed?.id;
+    return { token, userId };
+  } catch {
+    return {};
+  }
+}
+
 // --- Utility function for client-side shuffle (defined for completeness) ---
 const shuffleArray = (array) => {
     let newArray = [...array];
@@ -374,31 +396,69 @@ const DashboardHome = () => {
     return () => window.removeEventListener("progressUpdate", syncProgress);
   }, []);
 
-  const upgradeRank = () => {
-    let { tier, stage } = rank;
+  // Fetch ranking data from API to get accurate level and completed progress
+  useEffect(() => {
+    let mounted = true;
+    const { token } = getAuth();
 
-    if (stage < 5) stage += 1;
-    else {
-      const index = rankOrder.indexOf(tier);
-      if (index < rankOrder.length - 1) {
-        tier = rankOrder[index + 1];
-        stage = 1;
+    async function loadRanking() {
+      try {
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const response = await fetch(`${BASE_URL}/api/ranking`, { headers });
+        if (response && response.ok) {
+          const json = await response.json();
+          console.log("[DashboardHome] Ranking API response:", json);
+          
+          const tier = json?.tier || rank.tier;
+          const stage = Number(json?.sublevel ?? rank.stage);
+          const progress = Number(json?.progressInSublevel ?? 0);
+          const computedLevel = Math.min(Math.round((progress / 10) * 100), 100);
+          const apiBooksInRank = Number(json?.booksRead ?? 0);
+
+          console.log("[DashboardHome] Computed:", { tier, stage, progress, computedLevel, booksInRank: apiBooksInRank });
+
+          if (mounted) {
+            // Update rank
+            const newRank = { tier, stage };
+            setRank(newRank);
+            localStorage.setItem("rankData", JSON.stringify(newRank));
+
+            // Update level (0-100% based on progressInSublevel)
+            setLevelProgress(computedLevel);
+            localStorage.setItem("levelProgress", computedLevel);
+
+            // Update completed (0-9 books in current rank)
+            setCompletedProgress(apiBooksInRank);
+            localStorage.setItem("completedProgress", apiBooksInRank);
+            
+            console.log("[DashboardHome] Updated state:", { tier, stage, level: computedLevel, completed: apiBooksInRank });
+          }
+        }
+      } catch (e) {
+        console.warn("[DashboardHome] Error loading ranking:", e);
       }
     }
+    
+    loadRanking();
+    
+    // Refresh ranking when books are read
+    const handleProgressUpdate = () => {
+      loadRanking();
+    };
+    window.addEventListener("progressUpdate", handleProgressUpdate);
+    window.addEventListener("bookOpened", handleProgressUpdate);
 
-    const newRank = { tier, stage };
-    setRank(newRank);
-    localStorage.setItem("rankData", JSON.stringify(newRank));
+    return () => {
+      mounted = false;
+      window.removeEventListener("progressUpdate", handleProgressUpdate);
+      window.removeEventListener("bookOpened", handleProgressUpdate);
+    };
+  }, []);
 
-    setLevelProgress(0);
-    setCompletedProgress(0);
-
-    window.dispatchEvent(new Event("progressUpdate"));
-  };
-
-  useEffect(() => {
-    if (levelProgress >= 100 && completedProgress >= 10) upgradeRank();
-  }, [levelProgress, completedProgress]);
+  // Rank upgrades are now handled by the backend based on cumulative progress
+  // The ranking API automatically calculates the correct rank based on total books read
 
   const openBook = (book) => {
     const formats = book.formats;
