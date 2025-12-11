@@ -314,15 +314,15 @@ const LearningProgress = () => {
 
   const levelPercent = Math.min((level / levelGoal) * 100, 100);
   
-  // Calculate books goal based on current rank
-  // Each rank tier has 5 sublevels, each requiring 10 books
-  // So rank progression: 0-10 (Bronze V), 10-20 (Bronze IV), 20-30 (Bronze III), etc.
+  // Calculate books display based on current rank
+  // Each rank sublevel requires 10 books to advance
+  // Cumulative: Bronze V = 0-10, Bronze IV = 10-20, Bronze III = 20-30, etc.
   const rankOrder = ["Bronze", "Silver", "Gold", "Amethyst", "Diamond", "Challenger"];
   const tierIndex = rankOrder.indexOf(rank.tier);
-  const booksForCurrentTier = (tierIndex * 5 + (5 - rank.stage)) * 10; // books at start of this rank
-  const booksForNextTier = booksForCurrentTier + 10; // books at end of this rank
-  const booksInCurrentRank = booksRead - booksForCurrentTier; // books read in current rank (0-10)
-  const booksPercent = Math.min((booksInCurrentRank / 10) * 100, 100);
+  const totalBooksForCurrentRank = (tierIndex * 5 + (5 - rank.stage)) * 10; // cumulative books at start of this rank
+  const booksInCurrentRank = booksRead - totalBooksForCurrentRank; // books read since this rank started (0-9, should reach 10 to advance)
+  const booksDisplayed = Math.max(0, booksInCurrentRank); // ensure non-negative for display
+  const booksPercent = Math.min((booksDisplayed / 10) * 100, 100);
   
   const currentRankImage = rankImages[rank.tier]?.[rank.stage - 1] || bronze1;
 
@@ -380,7 +380,7 @@ const LearningProgress = () => {
 
         <div className="flex justify-between mb-2 mt-6 text-black font-bold text-base sm:text-lg">
           <span>Books Read</span>
-          <span>{booksRead}/{booksForNextTier}</span>
+          <span>{booksDisplayed}/{10}</span>
         </div>
 
         <div className="w-full h-5 sm:h-6 bg-blue-200 rounded-full">
