@@ -64,7 +64,9 @@ function getAuth() {
       parsed?.data?.token ||
       parsed?.data?.accessToken ||
       parsed?.user?.token;
-    return { token };
+    const user = parsed?.user || parsed?.data?.user || parsed?.data || parsed;
+    const userId = user?.id || user?.uid || user?.userId || user?.studentId || parsed?.id;
+    return { token, userId };
   } catch {
     return {};
   }
@@ -152,11 +154,46 @@ const LearningProgress = () => {
     if (level >= 100 && booksCompleted >= 10) upgradeRank();
   }, [level, booksCompleted]);
 
+  // Fetch student profile from Firestore
   useEffect(() => {
     let mounted = true;
-    const { token } = getAuth();
+    const { token, userId } = getAuth();
 
-    async function tryFetch(paths, options = {}) {
+    async function fetchStudentProfile() {
+      if (!token || !userId) {
+        console.log("[LearningProgress] No token or userId, skipping profile fetch");
+        return;
+      }
+      try {
+        const res = await fetch(`${BASE_URL}/api/student/profile/${userId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!res.ok) {
+          console.warn("[LearningProgress] Failed to fetch profile:", res.status);
+          return;
+        }
+        const data = await res.json();
+        const profile = data?.profile || data?.data?.profile || data;
+
+        if (mounted && profile) {
+          console.log("[LearningProgress] Fetched student profile from Firestore:", profile);
+
+          // Get booksRead from Firestore (array of book IDs)
+          const booksReadArray = Array.isArray(profile.booksRead) ? profile.booksRead : [];
+          const booksReadCount = booksReadArray.length || 0;
+
+          // Get other learning metrics
+          const levelProgress = profile.levelProgress || 0;
+          const completedProgress = profile.completedProgress || 0;
+          const rankData = profile.rank || { tier: "Bronze", stage: 1 };
+          const points = profile.points || 0;
+
+          console.log("[LearningProgress] Extracted data:\", { booksReadCount, levelProgress, completedProgress, points, rank: rankData });\n\n          // Update state with Firestore data\n          setBooksRead(booksReadCount);\n          setBooksCompleted(completedProgress);\n          setLevel(levelProgress);\n          setPoints(points);\n          setRank(rankData);\n\n          // Persist to localStorage\n          localStorage.setItem("booksRead", booksReadCount);\n          localStorage.setItem("completedProgress", completedProgress);\n          localStorage.setItem("levelProgress", levelProgress);\n          localStorage.setItem("points", points);\n          localStorage.setItem("rankData", JSON.stringify(rankData));\n        }\n      } catch (err) {\n        console.error("[LearningProgress] Error fetching student profile:", err);\n      }\n    }\n\n    fetchStudentProfile();\n    return () => {\n      mounted = false;\n    };\n  }, []);\n\n  useEffect(() => {\n    let mounted = true;\n    const { token } = getAuth();\n\n    async function tryFetch(paths, options = {}) {
       for (const p of paths) {
         try {
           const res = await fetch(p, options);
