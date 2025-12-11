@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Search, Volume2 } from "lucide-react";
+import bulbIcon from "../assets/bulb.png";
 
 const WordHelper = () => {
   const [query, setQuery] = useState("");
@@ -233,7 +234,7 @@ const WordHelper = () => {
 
         {!result && !loading && !error && (
           <div className="text-center">
-            <img src="/src/assets/bulb.png" alt="lightbulb" className="w-14 mx-auto mb-6" />
+            <img src={bulbIcon} alt="lightbulb" className="w-14 mx-auto mb-6" />
             <h2 className="text-3xl font-semibold mb-5">Unlock the Power of Words</h2>
             <p className="text-gray-700 text-lg leading-relaxed max-w-2xl mx-auto mb-6">
               Enter any word to instantly get its definition, pronunciation, and examples.
