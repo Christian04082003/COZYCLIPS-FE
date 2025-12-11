@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import coinIcon from "../assets/coins.png";
 
 const DashboardNavbar = ({ profileImage }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -138,7 +139,7 @@ const DashboardNavbar = ({ profileImage }) => {
 
       <div className="hidden lg:flex items-center space-x-6 xl:space-x-8">
         <div className="flex items-center space-x-2">
-          <img src="/src/assets/coins.png" alt="Coin Icon" className="h-6 w-6" />
+          <img src={coinIcon} alt="Coin Icon" className="h-6 w-6" />
           <span className="text-base font-medium inline-block text-right" style={{ width: "5px" }}>
             {coins}
           </span>
@@ -155,7 +156,7 @@ const DashboardNavbar = ({ profileImage }) => {
 
       <div className="flex lg:hidden items-center space-x-3 sm:space-x-4">
         <div className="flex items-center space-x-1 sm:space-x-2">
-          <img src="/src/assets/coins.png" alt="Coin" className="h-5 w-5" />
+          <img src={coinIcon} alt="Coin" className="h-5 w-5" />
           <span className="text-sm font-medium inline-block text-right" style={{ width: "30px" }}>
             {coins}
           </span>
