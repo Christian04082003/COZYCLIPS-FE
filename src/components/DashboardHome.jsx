@@ -583,13 +583,20 @@ const DashboardHome = () => {
           <div className="relative flex items-center w-full md:w-1/2 p-4 md:p-8 space-x-4 md:space-x-6 backdrop-blur-[2px] z-10">
             <label
               htmlFor="profile-upload-disabled"
-              className="relative w-20 h-20 md:w-40 md:h-32 bg-gray-700/80 rounded-lg flex items-center justify-center overflow-hidden border border-gray-600"
+              className="relative w-20 h-20 md:w-40 md:h-32 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg flex items-center justify-center overflow-hidden border-2 border-purple-400"
             >
               {profileImage ? (
                 <img src={profileImage} alt="Profile" className="object-cover w-full h-full" />
               ) : (
-                <div className="flex flex-col items-center justify-center text-gray-300">
-                  <Upload size={24} />
+                <div className="flex flex-col items-center justify-center text-white">
+                  <div className="text-3xl md:text-5xl font-bold">
+                    {userData.displayName
+                      ?.split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2) || "👤"}
+                  </div>
                 </div>
               )}
               <input id="profile-upload-disabled" type="file" disabled className="hidden" />
