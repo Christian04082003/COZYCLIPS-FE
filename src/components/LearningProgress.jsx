@@ -243,6 +243,9 @@ const LearningProgress = () => {
           console.log("[LearningProgress] Computed rank:", { tier, stage, progress, computedLevel });
 
           if (mounted) {
+            // Check if rank changed (tier or stage)
+            const rankChanged = rank.tier !== tier || rank.stage !== stage;
+            
             // Use exact values from API
             const newRank = { tier, stage };
             setRank(newRank);
@@ -252,6 +255,13 @@ const LearningProgress = () => {
             const totalCompleted = Number(json?.totalCompletedBooks ?? 0);
             setBooksCompleted(totalCompleted);
             localStorage.setItem("completedProgress", totalCompleted);
+
+            // If rank advanced and books are at 10, reset books read to 0
+            if (rankChanged && booksRead >= 10) {
+              console.log("[LearningProgress] Rank advanced! Resetting Books Read to 0");
+              setBooksRead(0);
+              localStorage.setItem("booksRead", 0);
+            }
 
             if (typeof json?.totalPoints !== "undefined") {
               setPoints(Number(json.totalPoints));
