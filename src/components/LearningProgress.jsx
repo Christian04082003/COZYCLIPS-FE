@@ -250,7 +250,7 @@ const LearningProgress = () => {
           const json = await rRes.json();
           const tier = json?.tier || json?.currentRank?.split?.(" ")?.[0] || rank.tier;
           const stage = Number(json?.sublevel || json?.sublevel === 0 ? json.sublevel : json?.sublevel) || json?.sublevel || rank.stage || 1;
-          const progress = Number(json?.progressInSublevel || 0);
+          const progress = Number(json?.progressInSublevel ?? 0);
           const computedLevel = Math.min(Math.round((progress / 10) * 100), 100);
 
           if (mounted) {
@@ -260,19 +260,20 @@ const LearningProgress = () => {
 
             // Use returned totals where possible
             const totalCompleted = Number(json?.totalCompletedBooks ?? booksCompleted);
-            setBooksRead(totalCompleted);
-            setBooksCompleted(totalCompleted);
-            localStorage.setItem("booksRead", totalCompleted);
-            localStorage.setItem("completedProgress", totalCompleted);
+            // Only update booksCompleted (progress towards goal), don't overwrite booksRead
+            setBooksCompleted(Math.min(totalCompleted, 10));
+            localStorage.setItem("completedProgress", Math.min(totalCompleted, 10));
 
             if (typeof json?.totalPoints !== "undefined") {
               setPoints(Number(json.totalPoints));
               localStorage.setItem("points", Number(json.totalPoints));
-            } else {
             }
 
-            setLevel(computedLevel);
-            localStorage.setItem("levelProgress", computedLevel);
+            // Only set level if we have valid progress data
+            if (progress > 0 || json?.progressInSublevel !== undefined) {
+              setLevel(computedLevel);
+              localStorage.setItem("levelProgress", computedLevel);
+            }
           }
         } else {
           // console.warn('Ranking endpoint failed', rRes && rRes.status);
@@ -303,7 +304,7 @@ const LearningProgress = () => {
   }, []);
 
   const levelPercent = Math.min((level / levelGoal) * 100, 100);
-  const booksPercent = Math.min((booksRead / booksGoal) * 100, 100);
+  const booksPercent = Math.min((booksCompleted / booksGoal) * 100, 100);
   const currentRankImage = rankImages[rank.tier]?.[rank.stage - 1] || bronze1;
 
   return (
