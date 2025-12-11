@@ -195,7 +195,19 @@ const LearningProgress = () => {
 
           console.log("[LearningProgress] Extracted data:", { booksReadCount, levelProgress, completedProgress, points, rank: rankData });
 
-          // Update state with Firestore data\n          setBooksRead(booksReadCount);\n          setBooksCompleted(completedProgress);\n          setLevel(levelProgress);\n          setPoints(points);\n          setRank(rankData);\n\n          // Persist to localStorage\n          localStorage.setItem("booksRead", booksReadCount);\n          localStorage.setItem("completedProgress", completedProgress);\n          localStorage.setItem("levelProgress", levelProgress);\n          localStorage.setItem("points", points);\n          localStorage.setItem("rankData", JSON.stringify(rankData));\n        }\n      } catch (err) {\n        console.error("[LearningProgress] Error fetching student profile:", err);\n      }\n    }\n\n    fetchStudentProfile();\n    return () => {\n      mounted = false;\n    };\n  }, []);\n\n  useEffect(() => {\n    let mounted = true;\n    const { token } = getAuth();\n\n    async function tryFetch(paths, options = {}) {
+          // Update state with Firestore data
+          setBooksRead(booksReadCount);
+          setBooksCompleted(completedProgress);
+          setLevel(levelProgress);
+          setPoints(points);
+          setRank(rankData);
+
+          // Persist to localStorage
+          localStorage.setItem("booksRead", booksReadCount);
+          localStorage.setItem("completedProgress", completedProgress);
+          localStorage.setItem("levelProgress", levelProgress);
+          localStorage.setItem("points", points);
+          localStorage.setItem("rankData", JSON.stringify(rankData));\n        }\n      } catch (err) {\n        console.error("[LearningProgress] Error fetching student profile:", err);\n      }\n    }\n\n    fetchStudentProfile();\n    return () => {\n      mounted = false;\n    };\n  }, []);\n\n  useEffect(() => {\n    let mounted = true;\n    const { token } = getAuth();\n\n    async function tryFetch(paths, options = {}) {
       for (const p of paths) {
         try {
           const res = await fetch(p, options);
