@@ -177,16 +177,21 @@ const DashboardHome = () => {
         
         if (profile && profile.displayName) {
           console.log("[DashboardHome] Setting displayName:", profile.displayName);
+
+          const emailFromProfile = profile.email;
+          const emailFromAuth = user?.email;
+          const resolvedEmail = emailFromProfile || emailFromAuth || "user@email.com";
+          console.log("[DashboardHome] Resolved email:", resolvedEmail);
           
           // Update userData state with displayName from Firestore
           setUserData({
             displayName: profile.displayName,
-            email: profile.email || "user@email.com"
+            email: resolvedEmail
           });
 
           // Save to localStorage
           localStorage.setItem("displayName", profile.displayName);
-          localStorage.setItem("email", profile.email || "user@email.com");
+          localStorage.setItem("email", resolvedEmail);
           console.log("[DashboardHome] Saved to localStorage - displayName:", profile.displayName);
 
           // Update profile image if available (avatarUrl from Firestore)
@@ -250,8 +255,10 @@ const DashboardHome = () => {
     // Also check auth data
     try {
       const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
-      if (authData.user && authData.user.email) {
-        setUserData((prev) => ({ ...prev, email: authData.user.email }));
+      const authEmail = authData?.user?.email || authData?.data?.user?.email;
+      if (authEmail) {
+        setUserData((prev) => ({ ...prev, email: authEmail }));
+        localStorage.setItem("email", authEmail);
       }
     } catch (error) {
       console.error("Error parsing auth data:", error);
