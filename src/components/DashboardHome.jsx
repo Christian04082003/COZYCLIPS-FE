@@ -206,6 +206,11 @@ const DashboardHome = () => {
 
   // Initial data load
   useEffect(() => {
+    // Clear old firstName/lastName from localStorage if they exist
+    localStorage.removeItem("firstName");
+    localStorage.removeItem("lastName");
+    localStorage.removeItem("fullName");
+
     // First, try to load from localStorage for instant display
     const savedImage = localStorage.getItem("profileImage");
     if (savedImage) setProfileImage(savedImage);
@@ -230,8 +235,18 @@ const DashboardHome = () => {
       console.error("Error parsing auth data:", error);
     }
 
-    // Then fetch fresh data from backend
+    // Then fetch fresh data from backend - this will override with real data from Firestore
     fetchUserData();
+
+    // Listen for storage changes (e.g., from ProfileSettings)
+    const handleStorageChange = (e) => {
+      if (e.key === "displayName" || e.key === "profileImage") {
+        fetchUserData();
+      }
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   // Fetch suggested books from backend

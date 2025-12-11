@@ -129,6 +129,7 @@ const ProfileSettings = () => {
             const p = json?.data?.profile;
             if (p?.displayName) {
               setFullName(p.displayName);
+              localStorage.setItem("displayName", p.displayName);
               localStorage.setItem("fullName", p.displayName);
             }
             if (p?.username) {
@@ -173,6 +174,7 @@ const ProfileSettings = () => {
             setProfile(candidate);
             if (candidate?.displayName) {
               setFullName(candidate.displayName);
+              localStorage.setItem("displayName", candidate.displayName);
               localStorage.setItem("fullName", candidate.displayName);
             }
             if (candidate?.username) {
@@ -271,6 +273,7 @@ const ProfileSettings = () => {
             localStorage.setItem("profileImage", newProfile.avatarUrl);
           }
           
+          localStorage.setItem("displayName", newProfile.displayName || fullName);
           localStorage.setItem("fullName", newProfile.displayName || fullName);
           localStorage.setItem("username", newProfile.username || username);
           
@@ -301,6 +304,7 @@ const ProfileSettings = () => {
             localStorage.setItem("profileImage", createdProfile.avatarUrl);
           }
           
+          localStorage.setItem("displayName", createdProfile.displayName || fullName);
           localStorage.setItem("fullName", createdProfile.displayName || fullName);
           localStorage.setItem("username", createdProfile.username || username);
           
