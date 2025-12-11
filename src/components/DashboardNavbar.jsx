@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import coinIcon from "../assets/coins.png";
+import defaultAvatar from "../assets/avatar1.png";
 
 const DashboardNavbar = ({ profileImage }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -147,7 +148,7 @@ const DashboardNavbar = ({ profileImage }) => {
 
         <div onClick={handleProfileClick} className="cursor-pointer">
           <img
-            src={savedImage || "/profile.jpg"}
+            src={savedImage || defaultAvatar}
             alt="User Profile"
             className="h-10 w-10 rounded-full border-[2px] border-white object-cover"
           />
@@ -173,7 +174,7 @@ const DashboardNavbar = ({ profileImage }) => {
       {isOpen && (
         <div className="absolute top-[64px] right-0 lg:hidden bg-[#870022] w-[60%] sm:w-[50%] p-5 rounded-bl-xl shadow-lg flex flex-col items-center space-y-3">
           <img
-            src={savedImage || "/profile.jpg"}
+            src={savedImage || defaultAvatar}
             alt="User Profile"
             className="h-14 w-14 rounded-full border-[1px] border-white object-cover mb-4"
           />
