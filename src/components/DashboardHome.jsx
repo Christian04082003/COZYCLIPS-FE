@@ -28,6 +28,11 @@ const DashboardHome = () => {
     email: localStorage.getItem("email") || "user@email.com",
   });
 
+  // Debug log whenever userData changes
+  useEffect(() => {
+    console.log("[DashboardHome] userData state updated:", userData);
+  }, [userData]);
+
   const [levelProgress, setLevelProgress] = useState(() => Number(localStorage.getItem("levelProgress")) || 0);
   const [completedProgress, setCompletedProgress] = useState(() => Number(localStorage.getItem("completedProgress")) || 0);
 
@@ -138,13 +143,15 @@ const DashboardHome = () => {
       const token = authData.token;
       const userId = authData.userId;
       
+      console.log("[DashboardHome] Auth data:", { token: token ? "exists" : "missing", userId });
+      
       if (!token || !userId) {
-        console.error("No authentication token or userId found");
+        console.error("[DashboardHome] No authentication token or userId found");
         setLoading(false);
         return;
       }
 
-      console.log("Fetching student profile from Firestore...");
+      console.log(`[DashboardHome] Fetching student profile from: https://czc-eight.vercel.app/api/student/profile/${userId}`);
       const response = await fetch(`https://czc-eight.vercel.app/api/student/profile/${userId}`, {
         method: "GET",
         headers: {
@@ -153,27 +160,34 @@ const DashboardHome = () => {
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Student profile from Firestore:", data);
+      console.log("[DashboardHome] Response status:", response.status);
+      const data = await response.json();
+      console.log("[DashboardHome] Full response data:", JSON.stringify(data, null, 2));
+
+      if (response.ok && data) {
+        // Handle different response structures
+        const profile = data.profile || data.data?.profile || data;
+        console.log("[DashboardHome] Extracted profile:", profile);
         
-        if (data.profile) {
-          const profile = data.profile;
+        if (profile && profile.displayName) {
+          console.log("[DashboardHome] Setting displayName:", profile.displayName);
           
           // Update userData state with displayName from Firestore
           setUserData({
-            displayName: profile.displayName || "User Student",
+            displayName: profile.displayName,
             email: profile.email || "user@email.com"
           });
 
           // Save to localStorage
-          localStorage.setItem("displayName", profile.displayName || "User Student");
+          localStorage.setItem("displayName", profile.displayName);
           localStorage.setItem("email", profile.email || "user@email.com");
+          console.log("[DashboardHome] Saved to localStorage - displayName:", profile.displayName);
 
           // Update profile image if available (avatarUrl from Firestore)
           if (profile.avatarUrl) {
             setProfileImage(profile.avatarUrl);
             localStorage.setItem("profileImage", profile.avatarUrl);
+            console.log("[DashboardHome] Updated profile image:", profile.avatarUrl);
           }
 
           // Update level progress if available
@@ -193,12 +207,14 @@ const DashboardHome = () => {
             setRank(profile.rank);
             localStorage.setItem("rankData", JSON.stringify(profile.rank));
           }
+        } else {
+          console.error("[DashboardHome] No displayName in profile:", profile);
         }
       } else {
-        console.error("Failed to fetch student profile:", response.status);
+        console.error("[DashboardHome] Failed to fetch student profile. Status:", response.status, "Data:", data);
       }
     } catch (error) {
-      console.error("Error fetching student profile:", error);
+      console.error("[DashboardHome] Error fetching student profile:", error);
     } finally {
       setLoading(false);
     }
@@ -506,7 +522,7 @@ const DashboardHome = () => {
 
             <div className="w-full">
               <h2 className="text-lg md:text-2xl font-semibold text-white drop-shadow-md">
-                {userData.displayName}
+                {userData.displayName || "Loading..."}
               </h2>
 
               <div className="flex items-center text-xs md:text-sm text-gray-200 mt-1 space-x-2">
