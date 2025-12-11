@@ -265,7 +265,7 @@ const Library = () => {
             <section className="mb-12">
               <h2 className="text-2xl font-bold text-black mb-6">Recommended for You</h2>
               {recommendedRows.map((row, i) => (
-                <div key={`rec-${i}`} className="mb-10 overflow-x-auto scrollbar-hide">
+                <div key={`rec-${i}`} className="mb-10 overflow-x-auto">
                   <div className="flex gap-4 sm:gap-6 pb-4">
                     {row.map(book => (
                       <div
@@ -315,7 +315,7 @@ const Library = () => {
             <section>
               <h2 className="text-2xl font-bold text-black mb-6">Latest Additions</h2>
               {latestRows.map((row, i) => (
-                <div key={`latest-${i}`} className="mb-10 overflow-x-auto scrollbar-hide">
+                <div key={`latest-${i}`} className="mb-10 overflow-x-auto">
                   <div className="flex gap-4 sm:gap-6 pb-4">
                     {row.map(book => (
                       <div key={book.id} onClick={() => setSelectedBook(book)} className="flex-shrink-0 w-44 sm:w-52 cursor-pointer group">
@@ -408,8 +408,24 @@ const Library = () => {
       )}
 
       <style>{`
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .overflow-x-auto {
+          scrollbar-width: thin;
+          scrollbar-color: #b0042b #f3ede3;
+        }
+        .overflow-x-auto::-webkit-scrollbar {
+          height: 8px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-track {
+          background: #f3ede3;
+          border-radius: 4px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb {
+          background: #b0042b;
+          border-radius: 4px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+          background: #8a0322;
+        }
       `}</style>
     </>
   );
