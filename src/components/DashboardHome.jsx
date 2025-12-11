@@ -140,13 +140,14 @@ const DashboardHome = () => {
   const fetchUserData = async () => {
     try {
       const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
-      const token = authData.token;
-      // Extract userId from different possible locations in auth data
-      const userId = authData.userId || authData.user?.id || authData.id;
+      const token = authData.token || authData?.data?.token || authData?.user?.token;
+      const user = authData?.user || authData?.data?.user || authData?.data || authData;
+      const userId = user?.id || user?.uid || user?.userId || user?.studentId || authData?.id;
       
       console.log("[DashboardHome] Auth data:", { 
         token: token ? "exists" : "missing", 
         userId, 
+        user,
         fullAuthData: authData 
       });
       
