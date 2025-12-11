@@ -5,7 +5,6 @@ import DashboardNavbar from "../components/DashboardNavbar";
 const navItems = [
   { name: "Learning Progress", path: "/profile" },
   { name: "Profile Settings", path: "/profile/profile-settings" },
-  { name: "Achievements", path: "/profile/achievements" },
   { name: "Subscription", path: "/profile/subscription" },
 ];
 

@@ -24,7 +24,6 @@ import Read from './pages/Read'
 import QuizGame from './components/QuizGame'
 import StreakWidget from './components/StreakWidget'
 import Profile from './pages/Profile'
-import Achievements from './components/Achievements'
 import LearningProgress from './components/LearningProgress'
 import ProfileSettings from './components/ProfileSettings'
 import Subscription from './components/Subscription'
@@ -112,7 +111,6 @@ const App = () => {
       <Route path="/profile" element={<ProtectedElement><Profile /></ProtectedElement>}>
         <Route index element={<LearningProgress />} />  
         <Route path="profile-settings" element={<ProfileSettings />} />
-        <Route path="achievements" element={<Achievements />} />
         <Route path="subscription" element={<Subscription />} />
       </Route>
     </Routes>
