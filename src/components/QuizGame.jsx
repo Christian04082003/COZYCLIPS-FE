@@ -60,6 +60,7 @@ const QuizGame = () => {
   const [score, setScore] = useState(0);
   const [quizStartTime] = useState(Date.now());
   const [userInventory, setUserInventory] = useState([]); // User's purchased power-ups
+  const [consumedIds, setConsumedIds] = useState(new Set()); // Track consumed items locally
 
   // Fetch user's unlocked power-ups from Firestore via backend
   const fetchUserInventory = async (token, userId) => {
@@ -114,6 +115,43 @@ const QuizGame = () => {
       console.error("Error fetching user unlocked items:", err);
       setUserInventory([]);
     }
+  };
+
+  const consumePowerUp = async (itemId) => {
+    try {
+      const { token } = getAuth();
+      const userId = getAuth().userId;
+      if (!token || !userId) return;
+
+      const API_BASE = window.location.hostname === 'localhost' 
+        ? 'http://localhost:5000/api'
+        : 'https://czc-eight.vercel.app/api';
+
+      const res = await fetch(`${API_BASE}/student/powerups/consume`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ itemId })
+      });
+
+      if (!res.ok) {
+        console.warn('Failed to consume power-up:', res.status);
+      }
+    } catch (err) {
+      console.error('Error consuming power-up:', err);
+    }
+  };
+
+  const markConsumed = (itemId) => {
+    setUserInventory((prev) => {
+      const updated = [...prev];
+      const idx = updated.findIndex((i) => i.id === itemId);
+      if (idx !== -1) updated.splice(idx, 1);
+      return updated;
+    });
+    setConsumedIds((prev) => new Set(prev).add(itemId));
   };
 
   const question = quizData[current];
@@ -431,33 +469,48 @@ const QuizGame = () => {
   };
 
   const handleDoubleCoins = () => {
+    if (consumedIds.has('double-coins')) return;
     const updated = [...doubleCoinsUsed];
     updated[current] = true;
     setDoubleCoinsUsed(updated);
     alert("Double Coins activated for this question!");
+    consumePowerUp('double-coins');
+    markConsumed('double-coins');
   };
 
   const handleFiftyFifty = () => {
-    if (!fiftyFiftyUsed) {
+    if (!fiftyFiftyUsed && !consumedIds.has('fifty-fifty')) {
       setFiftyFiftyUsed(true);
       alert("50/50 activated! Two wrong answers removed.");
+      consumePowerUp('fifty-fifty');
+      markConsumed('fifty-fifty');
     }
   };
   
   const handleFreezeTime = () => {
+    if (consumedIds.has('freeze-time')) return;
     setFreezeTime((prev) => !prev);
     alert(freezeTime ? "Timer resumed!" : "Timer frozen!");
+    consumePowerUp('freeze-time');
+    markConsumed('freeze-time');
   };
   
   const handleSkipQuestion = () => {
     // Skip to next question without answering (will be marked wrong)
     alert("Question skipped. You can come back to it later.");
     handleNext();
+    if (!consumedIds.has('skip-question')) {
+      consumePowerUp('skip-question');
+      markConsumed('skip-question');
+    }
   };
   
   const handleExtraTime = () => {
+    if (consumedIds.has('extra-time')) return;
     setTimer((prev) => prev + 120);
     alert("Added 2 minutes to the timer!");
+    consumePowerUp('extra-time');
+    markConsumed('extra-time');
   };
 
   let displayedOptions = question?.options || [];
