@@ -263,6 +263,8 @@ const LearningProgress = () => {
 
             // Get booksRead from API response if available
             const apiBooks = Number(json?.booksRead ?? json?.totalBooksRead ?? -1);
+            console.log("[LearningProgress] API booksRead value:", { apiBooks, hasBooks: json?.booksRead, hasTotal: json?.totalBooksRead });
+            
             if (apiBooks >= 0) {
               // If rank improved, reset books to 0, otherwise use API value
               if (rankImproved) {
@@ -270,9 +272,12 @@ const LearningProgress = () => {
                 setBooksRead(0);
                 localStorage.setItem("booksRead", 0);
               } else {
+                console.log("[LearningProgress] Setting booksRead to:", apiBooks);
                 setBooksRead(apiBooks);
                 localStorage.setItem("booksRead", apiBooks);
               }
+            } else {
+              console.warn("[LearningProgress] No booksRead in API response, keeping current value:", booksRead);
             }
 
             if (typeof json?.totalPoints !== "undefined") {
@@ -336,9 +341,7 @@ const LearningProgress = () => {
   const booksDisplayed = Math.max(0, booksInCurrentRank); // ensure non-negative for display
   const booksPercent = Math.min((booksDisplayed / 10) * 100, 100);
   
-  if (typeof window !== "undefined") {
-    console.log("[LearningProgress] Books calc:", { rank, tierIndex, totalBooksForCurrentRank, booksRead, booksInCurrentRank, booksDisplayed, booksPercent });
-  }
+  console.log("[LearningProgress] Books calc:", { rank, tierIndex, totalBooksForCurrentRank, booksRead, booksInCurrentRank, booksDisplayed, booksPercent });
   
   const currentRankImage = rankImages[rank.tier]?.[rank.stage - 1] || bronze1;
 
