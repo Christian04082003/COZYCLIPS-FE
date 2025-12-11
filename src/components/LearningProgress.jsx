@@ -82,7 +82,8 @@ const LearningProgress = () => {
 
   const [level, setLevel] = useState(() => Number(localStorage.getItem("levelProgress")) || 0);
   const [points, setPoints] = useState(() => Number(localStorage.getItem("points")) || 0);
-  const [booksRead, setBooksRead] = useState(() => Number(localStorage.getItem("booksRead")) || 0);
+  const [booksRead, setBooksRead] = useState(() => Number(localStorage.getItem("booksRead")) || 0); // 0-9 books in current rank
+  const [totalBooksRead, setTotalBooksRead] = useState(() => Number(localStorage.getItem("totalBooksRead")) || 0); // cumulative books read
   const [booksCompleted, setBooksCompleted] = useState(() => Number(localStorage.getItem("completedProgress")) || 0);
 
   const [history, setHistory] = useState([]);
@@ -95,6 +96,7 @@ const LearningProgress = () => {
       setLevel(Number(localStorage.getItem("levelProgress")) || 0);
       setBooksCompleted(Number(localStorage.getItem("completedProgress")) || 0);
       setBooksRead(Number(localStorage.getItem("booksRead")) || 0);
+      setTotalBooksRead(Number(localStorage.getItem("totalBooksRead")) || 0);
       setPoints(Number(localStorage.getItem("points")) || 0);
 
       const storedRank = localStorage.getItem("rankData");
@@ -110,10 +112,11 @@ const LearningProgress = () => {
     localStorage.setItem("levelProgress", level);
     localStorage.setItem("completedProgress", booksCompleted);
     localStorage.setItem("booksRead", booksRead);
+    localStorage.setItem("totalBooksRead", totalBooksRead);
     localStorage.setItem("points", points);
 
     window.dispatchEvent(new Event("progressUpdate"));
-  }, [level, booksCompleted, booksRead, points]);
+  }, [level, booksCompleted, booksRead, totalBooksRead, points]);
 
   useEffect(() => {
     const handleBookOpen = () => {
@@ -172,24 +175,24 @@ const LearningProgress = () => {
           const completedBooksArray = Array.isArray(profile.completedBooks) ? profile.completedBooks : [];
           const completedCount = profile.completedBooksCount || completedBooksArray.length || 0;
           
-          // Get total books read from booksRead array
+          // Get total cumulative books read from booksRead array
           const booksReadArray = Array.isArray(profile.booksRead) ? profile.booksRead : [];
-          const booksReadCount = booksReadArray.length || 0;
+          const totalBooksReadCount = booksReadArray.length || 0;
 
           // Get other metrics
           const rankData = profile.rank || { tier: "Bronze", stage: 1 };
           const points = profile.points || 0;
 
-          console.log("[LearningProgress] Extracted data:", { completedCount, booksReadCount, points, rank: rankData });
+          console.log("[LearningProgress] Extracted data:", { completedCount, totalBooksReadCount, points, rank: rankData });
 
           // Update state with Firestore data
-          setBooksRead(booksReadCount);
+          setTotalBooksRead(totalBooksReadCount);
           setBooksCompleted(completedCount);
           setPoints(points);
           setRank(rankData);
 
           // Persist to localStorage
-          localStorage.setItem("booksRead", booksReadCount);
+          localStorage.setItem("totalBooksRead", totalBooksReadCount);
           localStorage.setItem("completedProgress", completedCount);
           localStorage.setItem("points", points);
           localStorage.setItem("rankData", JSON.stringify(rankData));
@@ -253,12 +256,17 @@ const LearningProgress = () => {
             setBooksCompleted(totalCompleted);
             localStorage.setItem("completedProgress", totalCompleted);
 
-            // Get booksRead from API response - trust the backend value
-            const apiBooks = Number(json?.booksRead ?? 0);
-            console.log("[LearningProgress] API returned booksRead:", apiBooks);
+            // Get booksRead (0-9 in current rank) from API response
+            const apiBooksInRank = Number(json?.booksRead ?? 0);
+            console.log("[LearningProgress] API returned booksRead (in current rank):", apiBooksInRank);
             
-            setBooksRead(apiBooks);
-            localStorage.setItem("booksRead", apiBooks);
+            // Get total cumulative books read
+            const apiTotalBooks = Number(json?.totalCompletedBooks ?? totalCompleted);
+            
+            setBooksRead(apiBooksInRank);
+            setTotalBooksRead(apiTotalBooks);
+            localStorage.setItem("booksRead", apiBooksInRank);
+            localStorage.setItem("totalBooksRead", apiTotalBooks);
 
             if (typeof json?.totalPoints !== "undefined") {
               setPoints(Number(json.totalPoints));
@@ -269,7 +277,7 @@ const LearningProgress = () => {
             setLevel(computedLevel);
             localStorage.setItem("levelProgress", computedLevel);
             
-            console.log("[LearningProgress] Updated state:", { tier, stage, level: computedLevel, totalCompleted, booksRead: apiBooks });
+            console.log("[LearningProgress] Updated state:", { tier, stage, level: computedLevel, totalCompleted, booksReadInRank: apiBooksInRank, totalBooks: apiTotalBooks });
           }
         } else {
           console.warn('[LearningProgress] Ranking endpoint failed', rRes?.status);
@@ -311,17 +319,12 @@ const LearningProgress = () => {
 
   const levelPercent = Math.min((level / levelGoal) * 100, 100);
   
-  // Calculate books display based on current rank
-  // Each rank sublevel requires 10 books to advance
-  // Cumulative: Bronze V = 0-10, Bronze IV = 10-20, Bronze III = 20-30, etc.
-  const rankOrderList = ["Bronze", "Silver", "Gold", "Diamond", "Amethyst", "Challenger"];
-  const tierIndex = rankOrderList.indexOf(rank.tier);
-  const totalBooksForCurrentRank = (tierIndex * 5 + (5 - rank.stage)) * 10; // cumulative books at start of this rank
-  const booksInCurrentRank = booksRead - totalBooksForCurrentRank; // books read since this rank started (0-9, should reach 10 to advance)
-  const booksDisplayed = Math.max(0, booksInCurrentRank); // ensure non-negative for display
+  // Use booksRead directly from API (0-9 books in current rank)
+  // API handles the reset logic when ranking up
+  const booksDisplayed = Math.max(0, Math.min(booksRead, 10));
   const booksPercent = Math.min((booksDisplayed / 10) * 100, 100);
   
-  console.log("[LearningProgress] Books calc:", { rank, tierIndex, totalBooksForCurrentRank, booksRead, booksInCurrentRank, booksDisplayed, booksPercent });
+  console.log("[LearningProgress] Books progress:", { rank, booksReadInRank: booksRead, totalBooksRead, booksPercent });
   
   const currentRankImage = rankImages[rank.tier]?.[rank.stage - 1] || bronze1;
 
@@ -355,7 +358,7 @@ const LearningProgress = () => {
         <div className="glow-card p-4 sm:p-8 h-[180px] sm:h-[200px] flex flex-col justify-center items-center shadow-lg rounded-xl">
           <FaBook className="text-red-500 text-3xl sm:text-4xl mb-2 sm:mb-3" />
           <div className="text-lg sm:text-xl font-semibold text-black">Books Read</div>
-          <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-black">{booksRead}</div>
+          <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-black">{totalBooksRead}</div>
         </div>
       </div>
 
