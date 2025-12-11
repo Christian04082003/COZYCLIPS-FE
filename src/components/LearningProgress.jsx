@@ -183,29 +183,29 @@ const LearningProgress = () => {
         if (mounted && profile) {
           console.log("[LearningProgress] Fetched student profile from Firestore:", profile);
 
-          // Get booksRead from Firestore (array of book IDs)
+          // Get completed books (use array if available, otherwise count)
+          const completedBooksArray = Array.isArray(profile.completedBooks) ? profile.completedBooks : [];
+          const completedCount = profile.completedBooksCount || completedBooksArray.length || 0;
+          
+          // Get total books read from booksRead array
           const booksReadArray = Array.isArray(profile.booksRead) ? profile.booksRead : [];
           const booksReadCount = booksReadArray.length || 0;
 
-          // Get other learning metrics
-          const levelProgress = profile.levelProgress || 0;
-          const completedProgress = profile.completedProgress || 0;
+          // Get other metrics
           const rankData = profile.rank || { tier: "Bronze", stage: 1 };
           const points = profile.points || 0;
 
-          console.log("[LearningProgress] Extracted data:", { booksReadCount, levelProgress, completedProgress, points, rank: rankData });
+          console.log("[LearningProgress] Extracted data:", { completedCount, booksReadCount, points, rank: rankData });
 
           // Update state with Firestore data
           setBooksRead(booksReadCount);
-          setBooksCompleted(completedProgress);
-          setLevel(levelProgress);
+          setBooksCompleted(completedCount);
           setPoints(points);
           setRank(rankData);
 
           // Persist to localStorage
           localStorage.setItem("booksRead", booksReadCount);
-          localStorage.setItem("completedProgress", completedProgress);
-          localStorage.setItem("levelProgress", levelProgress);
+          localStorage.setItem("completedProgress", completedCount);
           localStorage.setItem("points", points);
           localStorage.setItem("rankData", JSON.stringify(rankData));
         }
@@ -258,22 +258,19 @@ const LearningProgress = () => {
             setRank(newRank);
             localStorage.setItem("rankData", JSON.stringify(newRank));
 
-            // Use returned totals where possible
+            // Use returned totals - totalCompletedBooks is the cumulative count
             const totalCompleted = Number(json?.totalCompletedBooks ?? booksCompleted);
-            // Only update booksCompleted (progress towards goal), don't overwrite booksRead
-            setBooksCompleted(Math.min(totalCompleted, 10));
-            localStorage.setItem("completedProgress", Math.min(totalCompleted, 10));
+            setBooksCompleted(totalCompleted);
+            localStorage.setItem("completedProgress", totalCompleted);
 
             if (typeof json?.totalPoints !== "undefined") {
               setPoints(Number(json.totalPoints));
               localStorage.setItem("points", Number(json.totalPoints));
             }
 
-            // Only set level if we have valid progress data
-            if (progress > 0 || json?.progressInSublevel !== undefined) {
-              setLevel(computedLevel);
-              localStorage.setItem("levelProgress", computedLevel);
-            }
+            // Always set level based on progress in sublevel
+            setLevel(computedLevel);
+            localStorage.setItem("levelProgress", computedLevel);
           }
         } else {
           // console.warn('Ranking endpoint failed', rRes && rRes.status);
@@ -304,7 +301,7 @@ const LearningProgress = () => {
   }, []);
 
   const levelPercent = Math.min((level / levelGoal) * 100, 100);
-  const booksPercent = Math.min((booksCompleted / booksGoal) * 100, 100);
+  const booksPercent = Math.min(((booksCompleted % booksGoal) / booksGoal) * 100, 100);
   const currentRankImage = rankImages[rank.tier]?.[rank.stage - 1] || bronze1;
 
   return (
@@ -352,7 +349,7 @@ const LearningProgress = () => {
 
         <div className="flex justify-between mb-2 mt-4 text-black font-bold text-base sm:text-lg">
           <span>Level Progress</span>
-          <span>{level}/{levelGoal}</span>
+          <span>{level}%</span>
         </div>
 
         <div className="w-full h-5 sm:h-6 bg-blue-200 rounded-full">
@@ -360,8 +357,8 @@ const LearningProgress = () => {
         </div>
 
         <div className="flex justify-between mb-2 mt-6 text-black font-bold text-base sm:text-lg">
-          <span>Books Read</span>
-          <span>{booksRead}/{booksGoal}</span>
+          <span>Books for Rank</span>
+          <span>{booksCompleted % 10}/{booksGoal}</span>
         </div>
 
         <div className="w-full h-5 sm:h-6 bg-blue-200 rounded-full">
@@ -369,8 +366,7 @@ const LearningProgress = () => {
         </div>
 
         <div className="mt-3 sm:mt-4 text-black text-base sm:text-lg font-semibold">
-          {booksRead} / {booksGoal} books completed
-        </div>
+          {booksRead} total books read</div>
       </div>
     </div>
   );
