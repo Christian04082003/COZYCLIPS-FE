@@ -42,7 +42,7 @@ const getAuth = () => {
 }
 
 const ProtectedElement = ({ children }) => {
-  return getAuth() ? children : <Navigate to="/login" replace />
+  return getAuth() ? children : <Navigate to="/" replace />
 }
 
 const App = () => {
