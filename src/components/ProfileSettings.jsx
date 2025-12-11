@@ -213,24 +213,6 @@ const ProfileSettings = () => {
     }
   }
 
-  async function updateUserDocumentIfPossible(updatedUserFields = {}) {
-    try {
-      const uid = (user && (user.id || user.uid || user.userId)) || userId || (profile && (profile.studentId || profile.id));
-      if (!uid || Object.keys(updatedUserFields).length === 0) return;
-      const url = `${BASE_URL}/api/user/${uid}`;
-      const res = await fetch(url, {
-        method: "PATCH",
-        headers: getHeaders(),
-        body: JSON.stringify(updatedUserFields),
-      });
-      if (!res.ok) {
-        console.debug("updateUserDocumentIfPossible status", res.status);
-      }
-    } catch (err) {
-      console.debug("updateUserDocumentIfPossible error (ignored):", err?.message || err);
-    }
-  }
-
   const handleSaveChanges = async () => {
     const emptyFullName = fullName.trim() === "";
     const emptyUsername = username.trim() === "";
@@ -286,14 +268,6 @@ const ProfileSettings = () => {
           localStorage.setItem("username", newProfile.username || username);
           localStorage.setItem("profileImage", newProfile.avatarUrl || profilePic);
           setSuccess("Changes saved successfully!");
-
-          const userFields = {};
-          if (updated.username) userFields.username = updated.username;
-          if (updated.email) userFields.email = updated.email;
-          if (Object.keys(userFields).length) {
-            await updateUserDocumentIfPossible(userFields);
-          }
-
           return newProfile;
         } else {
           setSuccess("");
@@ -314,14 +288,6 @@ const ProfileSettings = () => {
           localStorage.setItem("username", createdProfile.username || username);
           localStorage.setItem("profileImage", createdProfile.avatarUrl || profilePic);
           setSuccess("Profile created");
-
-          const userFields = {};
-          if (updated.username) userFields.username = updated.username;
-          if (updated.email) userFields.email = updated.email;
-          if (Object.keys(userFields).length) {
-            await updateUserDocumentIfPossible(userFields);
-          }
-
           return createdProfile;
         } else {
           setSuccess("");
