@@ -39,11 +39,35 @@ const Login = () => {
       });
       const data = await res.json();
       if (data && data.success) {
+        const token = data.data?.token;
+        const user = data.data?.user;
+        const userId = user?.id || user?.uid || user?.userId || user?.studentId;
+
+        if (!token || !userId) {
+          alert("Invalid login response. Please try again.");
+          setLoading(false);
+          return;
+        }
+
+        // Verify profile exists in Firestore before setting auth
+        const profileRes = await fetch(`${BASE_URL}/api/student/profile/${userId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!profileRes.ok) {
+          alert("This account no longer exists. Please contact support or sign up again.");
+          setLoading(false);
+          return;
+        }
+
         try {
           localStorage.setItem("czc_auth", JSON.stringify(data.data || {}));
-          // Store email separately for easy access
-          if (data.data && data.data.user && data.data.user.email) {
-            localStorage.setItem("email", data.data.user.email);
+          if (user?.email) {
+            localStorage.setItem("email", user.email);
           }
         } catch (err) { }
         navigate("/dashboardlayout");

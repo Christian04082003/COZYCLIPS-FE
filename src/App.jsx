@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Landing from './pages/Landing'
 import Stories from './components/Stories'
@@ -29,20 +29,54 @@ import LearningProgress from './components/LearningProgress'
 import ProfileSettings from './components/ProfileSettings'
 import Subscription from './components/Subscription'
 
-const getAuth = () => {
+const getAuthInfo = () => {
   try {
     const raw = localStorage.getItem('czc_auth')
-    if (!raw) return null
+    if (!raw) return {};
     const parsed = JSON.parse(raw)
     const token = parsed?.token || parsed?.accessToken || parsed?.idToken || parsed?.data?.token || parsed?.data?.accessToken || parsed?.user?.token
-    return token
+    const user = parsed?.user || parsed?.data?.user || parsed?.data || parsed
+    const userId = user?.id || user?.uid || user?.userId || user?.studentId || parsed?.id
+    return { token, userId }
   } catch (e) {
-    return null
+    return {}
   }
 }
 
 const ProtectedElement = ({ children }) => {
-  return getAuth() ? children : <Navigate to="/" replace />
+  const [allowed, setAllowed] = useState(false)
+  const [checked, setChecked] = useState(false)
+
+  useEffect(() => {
+    const verify = async () => {
+      const { token, userId } = getAuthInfo()
+      if (!token || !userId) {
+        localStorage.removeItem('czc_auth')
+        setChecked(true)
+        return
+      }
+      try {
+        const res = await fetch(`https://czc-eight.vercel.app/api/student/profile/${userId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (res.ok) {
+          setAllowed(true)
+        } else {
+          localStorage.removeItem('czc_auth')
+          setAllowed(false)
+        }
+      } catch {
+        localStorage.removeItem('czc_auth')
+        setAllowed(false)
+      } finally {
+        setChecked(true)
+      }
+    }
+    verify()
+  }, [])
+
+  if (!checked) return null
+  return allowed ? children : <Navigate to="/login" replace />
 }
 
 const App = () => {
