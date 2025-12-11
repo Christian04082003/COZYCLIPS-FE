@@ -207,7 +207,24 @@ const LearningProgress = () => {
           localStorage.setItem("completedProgress", completedProgress);
           localStorage.setItem("levelProgress", levelProgress);
           localStorage.setItem("points", points);
-          localStorage.setItem("rankData", JSON.stringify(rankData));\n        }\n      } catch (err) {\n        console.error("[LearningProgress] Error fetching student profile:", err);\n      }\n    }\n\n    fetchStudentProfile();\n    return () => {\n      mounted = false;\n    };\n  }, []);\n\n  useEffect(() => {\n    let mounted = true;\n    const { token } = getAuth();\n\n    async function tryFetch(paths, options = {}) {
+          localStorage.setItem("rankData", JSON.stringify(rankData));
+        }
+      } catch (err) {
+        console.error("[LearningProgress] Error fetching student profile:", err);
+      }
+    }
+
+    fetchStudentProfile();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const { token } = getAuth();
+
+    async function tryFetch(paths, options = {}) {
       for (const p of paths) {
         try {
           const res = await fetch(p, options);
