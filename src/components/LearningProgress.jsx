@@ -346,7 +346,7 @@ const LearningProgress = () => {
         <div className="glow-card p-4 sm:p-8 h-[180px] sm:h-[200px] flex flex-col justify-center items-center shadow-lg rounded-xl">
           <FaLevelUpAlt className="text-green-500 text-3xl sm:text-4xl mb-2 sm:mb-3" />
           <div className="text-lg sm:text-xl font-semibold text-black">Level</div>
-          <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-black">{level}%</div>
+          <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-black">{level}/100%</div>
         </div>
 
         <div className="glow-card p-4 sm:p-8 h-[180px] sm:h-[200px] flex flex-col justify-center items-center shadow-lg rounded-xl">
@@ -372,8 +372,8 @@ const LearningProgress = () => {
         </h1>
 
         <div className="flex justify-between mb-2 mt-4 text-black font-bold text-base sm:text-lg">
-          <span>Level Progress</span>
-          <span>{level}%</span>
+          <span>LVL</span>
+          <span>{level}/100%</span>
         </div>
 
         <div className="w-full h-5 sm:h-6 bg-blue-200 rounded-full">
@@ -381,8 +381,8 @@ const LearningProgress = () => {
         </div>
 
         <div className="flex justify-between mb-2 mt-6 text-black font-bold text-base sm:text-lg">
-          <span>Books Read</span>
-          <span>{booksDisplayed}/{10}</span>
+          <span>Completed</span>
+          <span>{booksDisplayed}/10</span>
         </div>
 
         <div className="w-full h-5 sm:h-6 bg-blue-200 rounded-full">
