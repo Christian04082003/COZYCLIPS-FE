@@ -253,22 +253,12 @@ const LearningProgress = () => {
             setBooksCompleted(totalCompleted);
             localStorage.setItem("completedProgress", totalCompleted);
 
-            // Get booksRead from API response
+            // Get booksRead from API response - trust the backend value
             const apiBooks = Number(json?.booksRead ?? 0);
+            console.log("[LearningProgress] API returned booksRead:", apiBooks);
             
-            // Simple logic: if booksRead >= 10, reset to 0 when rank updates
-            // This means when you hit 10 books, you rank up and books reset
-            let booksToSet = apiBooks;
-            
-            // Check if we need to reset: if apiBooks indicates we hit the threshold
-            if (apiBooks >= 10) {
-              console.log("[LearningProgress] Books Read hit 10! Resetting to 0 and ranking up");
-              booksToSet = 0;
-            }
-            
-            console.log("[LearningProgress] Setting booksRead to:", booksToSet, "from API:", apiBooks);
-            setBooksRead(booksToSet);
-            localStorage.setItem("booksRead", booksToSet);
+            setBooksRead(apiBooks);
+            localStorage.setItem("booksRead", apiBooks);
 
             if (typeof json?.totalPoints !== "undefined") {
               setPoints(Number(json.totalPoints));
@@ -279,7 +269,7 @@ const LearningProgress = () => {
             setLevel(computedLevel);
             localStorage.setItem("levelProgress", computedLevel);
             
-            console.log("[LearningProgress] Updated state:", { tier, stage, level: computedLevel, totalCompleted, booksRead: booksToSet, apiBooks });
+            console.log("[LearningProgress] Updated state:", { tier, stage, level: computedLevel, totalCompleted, booksRead: apiBooks });
           }
         } else {
           console.warn('[LearningProgress] Ranking endpoint failed', rRes?.status);
