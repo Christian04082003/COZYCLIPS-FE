@@ -243,8 +243,13 @@ const LearningProgress = () => {
           console.log("[LearningProgress] Computed rank:", { tier, stage, progress, computedLevel });
 
           if (mounted) {
-            // Check if rank changed (tier or stage)
-            const rankChanged = rank.tier !== tier || rank.stage !== stage;
+            // Check if rank improved (advanced to better tier or better stage)
+            const rankOrderList = ["Bronze", "Silver", "Gold", "Diamond", "Amethyst", "Challenger"];
+            const oldTierIndex = rankOrderList.indexOf(rank.tier);
+            const newTierIndex = rankOrderList.indexOf(tier);
+            
+            // Rank improved if: tier increased, OR same tier but stage decreased (V=5 to I=1)
+            const rankImproved = (newTierIndex > oldTierIndex) || (newTierIndex === oldTierIndex && stage < rank.stage);
             
             // Use exact values from API
             const newRank = { tier, stage };
@@ -259,9 +264,9 @@ const LearningProgress = () => {
             // Get booksRead from API response if available
             const apiBooks = Number(json?.booksRead ?? json?.totalBooksRead ?? -1);
             if (apiBooks >= 0) {
-              // If rank advanced, reset books to 0, otherwise use API value
-              if (rankChanged) {
-                console.log("[LearningProgress] Rank advanced! Resetting Books Read to 0");
+              // If rank improved, reset books to 0, otherwise use API value
+              if (rankImproved) {
+                console.log("[LearningProgress] Rank improved! Resetting Books Read to 0");
                 setBooksRead(0);
                 localStorage.setItem("booksRead", 0);
               } else {
@@ -279,7 +284,7 @@ const LearningProgress = () => {
             setLevel(computedLevel);
             localStorage.setItem("levelProgress", computedLevel);
             
-            console.log("[LearningProgress] Updated state:", { tier, stage, level: computedLevel, totalCompleted, booksRead: apiBooks });
+            console.log("[LearningProgress] Updated state:", { tier, stage, level: computedLevel, totalCompleted, booksRead: apiBooks, rankImproved });
           }
         } else {
           console.warn('[LearningProgress] Ranking endpoint failed', rRes?.status);
