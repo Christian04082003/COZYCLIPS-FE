@@ -1,7 +1,6 @@
 import React from 'react'
-import { Routes } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Landing from './pages/Landing'
-import { Route } from 'react-router-dom'
 import Stories from './components/Stories'
 import Navbar from './components/Navbar'
 import Features from './components/Features'
@@ -30,12 +29,25 @@ import LearningProgress from './components/LearningProgress'
 import ProfileSettings from './components/ProfileSettings'
 import Subscription from './components/Subscription'
 
+const getAuth = () => {
+  try {
+    const raw = localStorage.getItem('czc_auth')
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    const token = parsed?.token || parsed?.accessToken || parsed?.idToken || parsed?.data?.token || parsed?.data?.accessToken || parsed?.user?.token
+    return token
+  } catch (e) {
+    return null
+  }
+}
+
+const ProtectedElement = ({ children }) => {
+  return getAuth() ? children : <Navigate to="/login" replace />
+}
 
 const App = () => {
   return (
-    
     <Routes>
-
       <Route path="/" element={<Landing />} />
       <Route path="/stories" element={<Stories />} />
       <Route path="/features" element={<Features />} />
@@ -46,29 +58,29 @@ const App = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} /> 
       <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/dashboardnavbar" element={<DashboardNavbar />} />
-      <Route path="/sidebar" element={<Sidebar />} />
+      
+      <Route path="/dashboardnavbar" element={<ProtectedElement><DashboardNavbar /></ProtectedElement>} />
+      <Route path="/sidebar" element={<ProtectedElement><Sidebar /></ProtectedElement>} />
 
-      <Route path="/dashboardlayout" element={<DashboardLayout />}>
+      <Route path="/dashboardlayout" element={<ProtectedElement><DashboardLayout /></ProtectedElement>}>
         <Route index element={<DashboardHome />} />
         <Route path="quiz-game" element={<QuizGame />} />
         <Route path="word-helper" element={<WordHelper />} />
         <Route path="bookmarks" element={<Bookmarks/>} />
       </Route>
 
-      <Route path="/challenges" element={<Challenges />} />
-      <Route path="/shop" element={<Shop />} />
-      <Route path="/library" element={<Library />} />
-      <Route path="/read" element={<Read />} />
-      <Route path="/streak-widget" element={<StreakWidget />} />
+      <Route path="/challenges" element={<ProtectedElement><Challenges /></ProtectedElement>} />
+      <Route path="/shop" element={<ProtectedElement><Shop /></ProtectedElement>} />
+      <Route path="/library" element={<ProtectedElement><Library /></ProtectedElement>} />
+      <Route path="/read" element={<ProtectedElement><Read /></ProtectedElement>} />
+      <Route path="/streak-widget" element={<ProtectedElement><StreakWidget /></ProtectedElement>} />
 
-      <Route path="/profile" element={<Profile />}>
-          <Route index element={<LearningProgress />} />  
-          <Route path="profile-settings" element={<ProfileSettings />} />
-          <Route path="achievements" element={<Achievements />} />
-          <Route path="subscription" element={<Subscription />} />
-        </Route>
-
+      <Route path="/profile" element={<ProtectedElement><Profile /></ProtectedElement>}>
+        <Route index element={<LearningProgress />} />  
+        <Route path="profile-settings" element={<ProfileSettings />} />
+        <Route path="achievements" element={<Achievements />} />
+        <Route path="subscription" element={<Subscription />} />
+      </Route>
     </Routes>
   )
 }
