@@ -141,12 +141,17 @@ const DashboardHome = () => {
     try {
       const authData = JSON.parse(localStorage.getItem("czc_auth") || "{}");
       const token = authData.token;
-      const userId = authData.userId;
+      // Extract userId from different possible locations in auth data
+      const userId = authData.userId || authData.user?.id || authData.id;
       
-      console.log("[DashboardHome] Auth data:", { token: token ? "exists" : "missing", userId });
+      console.log("[DashboardHome] Auth data:", { 
+        token: token ? "exists" : "missing", 
+        userId, 
+        fullAuthData: authData 
+      });
       
       if (!token || !userId) {
-        console.error("[DashboardHome] No authentication token or userId found");
+        console.error("[DashboardHome] No authentication token or userId found. Auth data:", authData);
         setLoading(false);
         return;
       }
