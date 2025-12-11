@@ -1,61 +1,11 @@
+import React, { useEffect, useState } from 'react';
+import { Trophy, Book, Zap, Star, Award, Target, Flame, Crown } from 'lucide-react';
 
-import React, { useState, useEffect } from "react";
-import { FaStar, FaBook, FaLevelUpAlt } from "react-icons/fa";
-
-import bronze1 from "../assets/bronze_1.png";
-import bronze2 from "../assets/bronze_2.png";
-import bronze3 from "../assets/bronze_3.png";
-import bronze4 from "../assets/bronze_4.png";
-import bronze5 from "../assets/bronze_5.png";
-
-import silver1 from "../assets/silver_1.png";
-import silver2 from "../assets/silver_2.png";
-import silver3 from "../assets/silver_3.png";
-import silver4 from "../assets/silver_4.png";
-import silver5 from "../assets/silver_5.png";
-
-import gold1 from "../assets/gold_1.png";
-import gold2 from "../assets/gold_2.png";
-import gold3 from "../assets/gold_3.png";
-import gold4 from "../assets/gold_4.png";
-import gold5 from "../assets/gold_5.png";
-
-import diamond1 from "../assets/diamond_1.png";
-import diamond2 from "../assets/diamond_2.png";
-import diamond3 from "../assets/diamond_3.png";
-import diamond4 from "../assets/diamond_4.png";
-import diamond5 from "../assets/diamond_5.png";
-
-import amethyst1 from "../assets/amethyst_1.png";
-import amethyst2 from "../assets/amethyst_2.png";
-import amethyst3 from "../assets/amethyst_3.png";
-import amethyst4 from "../assets/amethyst_4.png";
-import amethyst5 from "../assets/amethyst_5.png";
-
-import challenger1 from "../assets/challenger_1.png";
-import challenger2 from "../assets/challenger_2.png";
-import challenger3 from "../assets/challenger_3.png";
-import challenger4 from "../assets/challenger_4.png";
-import challenger5 from "../assets/challenger_5.png";
-
-const rankImages = {
-  Bronze: [bronze1, bronze2, bronze3, bronze4, bronze5],
-  Silver: [silver1, silver2, silver3, silver4, silver5],
-  Gold: [gold1, gold2, gold3, gold4, gold5],
-  Diamond: [diamond1, diamond2, diamond3, diamond4, diamond5],
-  Amethyst: [amethyst1, amethyst2, amethyst3, amethyst4, amethyst5],
-  Challenger: [challenger1, challenger2, challenger3, challenger4, challenger5],
-};
-
-const rankOrder = ["Bronze", "Silver", "Gold", "Diamond", "Amethyst", "Challenger"];
-const romanStages = ["V", "IV", "III", "II", "I"];
-
-// Backend base URL
 const BASE_URL = "https://czc-eight.vercel.app";
 
 function getAuth() {
   try {
-    const raw = localStorage.getItem("czc_auth");
+    const raw = localStorage.getItem('czc_auth');
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     const token =
@@ -65,246 +15,379 @@ function getAuth() {
       parsed?.data?.token ||
       parsed?.data?.accessToken ||
       parsed?.user?.token;
-    return { token };
+    const user = parsed?.user || parsed?.data?.user || parsed?.data || parsed;
+    const userId = user?.id || user?.uid || user?.userId || user?.studentId || parsed?.id;
+    return { token, userId, user };
   } catch {
     return {};
   }
 }
 
-const LearningProgress = () => {
-  const [rank, setRank] = useState(
-    JSON.parse(localStorage.getItem("rankData")) || {
-      tier: "Bronze",
-      stage: 1,
-    }
-  );
+export default function Achievements() {
+  const initialAchievements = [
+    { id: 'first-book', name: 'First Steps', description: 'Complete your first book', icon: <Book className="w-8 h-8" />, unlocked: false, category: 'reading' },
+    { id: 'quiz-master', name: 'Quiz Master', description: 'Score 100% on 10 quizzes', icon: <Trophy className="w-8 h-8" />, unlocked: false, category: 'quiz' },
+    { id: 'speed-reader', name: 'Speed Reader', description: 'Read 5 books in one week', icon: <Zap className="w-8 h-8" />, unlocked: false, category: 'special' },
+    { id: 'perfect-streak', name: 'Perfect Streak', description: 'Maintain a 7-day reading streak', icon: <Flame className="w-8 h-8" />, unlocked: false, progress: 0, maxProgress: 7, category: 'special' },
+    { id: 'word-wizard', name: 'Word Wizard', description: 'Look up 100 words in Word Helper', icon: <Star className="w-8 h-8" />, unlocked: false, progress: 0, maxProgress: 100, category: 'reading' },
+    { id: 'book-collector', name: 'Book Collector', description: 'Read 50 different books', icon: <Award className="w-8 h-8" />, unlocked: false, progress: 0, maxProgress: 50, category: 'reading' },
+    { id: 'accuracy-ace', name: 'Accuracy Ace', description: 'Achieve 95% average quiz accuracy', icon: <Target className="w-8 h-8" />, unlocked: false, progress: 0, maxProgress: 95, category: 'quiz' },
+    { id: 'reading-champion', name: 'Reading Champion', description: 'Reach Level 20', icon: <Crown className="w-8 h-8" />, unlocked: false, progress: 0, maxProgress: 20, category: 'special' },
+    { id: 'early-bird', name: 'Early Bird', description: 'Complete 10 reading sessions before 9 AM', icon: <Book className="w-8 h-8" />, unlocked: false, category: 'special' },
+    { id: 'quiz-veteran', name: 'Quiz Veteran', description: 'Complete 100 quizzes', icon: <Trophy className="w-8 h-8" />, unlocked: false, category: 'quiz' },
+    { id: 'genre-explorer', name: 'Genre Explorer', description: 'Read books from 10 different genres', icon: <Star className="w-8 h-8" />, unlocked: false, progress: 0, maxProgress: 10, category: 'reading' },
+    { id: 'perfect-month', name: 'Perfect Month', description: 'Read every day for 30 days', icon: <Flame className="w-8 h-8" />, unlocked: false, progress: 0, maxProgress: 30, category: 'special' }
+  ];
 
-  const [level, setLevel] = useState(() => Number(localStorage.getItem("levelProgress")) || 0);
-  const [points, setPoints] = useState(() => Number(localStorage.getItem("points")) || 0);
-  const [booksRead, setBooksRead] = useState(() => Number(localStorage.getItem("booksRead")) || 0);
-  const [booksCompleted, setBooksCompleted] = useState(() => Number(localStorage.getItem("completedProgress")) || 0);
+  const initialMilestones = [
+    { id: 'books-30', title: 'Read 30 Books', current: 0, target: 30, reward: '100 coins' },
+    { id: 'quizzes-150', title: 'Complete 150 Quizzes', current: 0, target: 150, reward: '50 coins + 5 gems' },
+    { id: 'points-5000', title: 'Earn 5,000 Points', current: 0, target: 5000, reward: 'Legendary Frame' },
+    { id: 'accuracy-90', title: 'Reach 90% Average Accuracy', current: 0, target: 90, reward: 'Diamond Avatar' }
+  ];
 
-  const [history, setHistory] = useState([]);
+  const [achievements, setAchievements] = useState(initialAchievements);
+  const [milestones, setMilestones] = useState(initialMilestones);
 
-  const levelGoal = 100;
-  const booksGoal = 10;
+  const { token, userId } = getAuth();
 
   useEffect(() => {
-    const syncProgress = () => {
-      setLevel(Number(localStorage.getItem("levelProgress")) || 0);
-      setBooksCompleted(Number(localStorage.getItem("completedProgress")) || 0);
-      setBooksRead(Number(localStorage.getItem("booksRead")) || 0);
-      setPoints(Number(localStorage.getItem("points")) || 0);
-
-      const storedRank = localStorage.getItem("rankData");
-      if (storedRank) setRank(JSON.parse(storedRank));
-    };
-
-    syncProgress();
-    window.addEventListener("progressUpdate", syncProgress);
-    return () => window.removeEventListener("progressUpdate", syncProgress);
+    loadUserData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("levelProgress", level);
-    localStorage.setItem("completedProgress", booksCompleted);
-    localStorage.setItem("booksRead", booksRead);
-    localStorage.setItem("points", points);
+  async function fetchJson(url, opts = {}) {
+    const res = await fetch(url, opts);
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, json, status: res.status };
+  }
 
-    window.dispatchEvent(new Event("progressUpdate"));
-  }, [level, booksCompleted, booksRead, points]);
+  function outProgressDefault(a) {
+    if (typeof a.progress === 'number') return a.progress;
+    if (a.maxProgress) return 0;
+    return 0;
+  }
 
-  useEffect(() => {
-    const handleBookOpen = () => {
-      setBooksRead((prev) => {
-        const updated = prev + 1;
-        localStorage.setItem("booksRead", updated);
-        window.dispatchEvent(new Event("progressUpdate"));
-        return updated;
+  async function loadUserData() {
+    try {
+      if (!userId) return;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      // Fetch profile (prefer direct id route)
+      let profile = null;
+      const p = await fetchJson(`${BASE_URL}/api/student/profile/${userId}`, { headers });
+      if (p.ok && p.json?.data?.profile) {
+        profile = p.json.data.profile;
+      } else {
+        const p2 = await fetchJson(`${BASE_URL}/api/student/profile`, { headers });
+        if (p2.ok) {
+          const profiles = p2.json?.data?.profiles ?? p2.json?.data ?? (Array.isArray(p2.json) ? p2.json : null);
+          if (Array.isArray(profiles) && profiles.length) {
+            profile = profiles.find(pr => String(pr.studentId || pr.id || pr.username) === String(userId)) || profiles[0];
+          }
+        }
+      }
+
+      // Fetch ranking (note /api prefix)
+      const r = await fetchJson(`${BASE_URL}/api/ranking`, { headers });
+      const hist = await fetchJson(`${BASE_URL}/api/ranking/history`, { headers });
+
+      // derive safe values
+      const booksReadArray = profile?.booksRead || profile?.readingProgress || [];
+      const booksReadCount = Number(
+        profile?.booksReadCount ??
+          (Array.isArray(booksReadArray) ? booksReadArray.length : 0) ??
+          (r.json?.totalCompletedBooks ?? 0)
+      );
+
+      const quizHistory = profile?.quizHistory || [];
+      const quizCount = Array.isArray(quizHistory)
+        ? quizHistory.length
+        : (Array.isArray(hist.json?.history) ? hist.json.history.filter(h => h.type === 'quiz').length : 0);
+
+      let avgAccuracy = null;
+      if (Array.isArray(quizHistory) && quizHistory.length) {
+        const scores = quizHistory.map(q => {
+          if (typeof q.score === 'number') return q.score;
+          if (q.correct != null && q.total != null) return Math.round((Number(q.correct) / Number(q.total)) * 100);
+          return null;
+        }).filter(v => v !== null);
+        if (scores.length) avgAccuracy = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+      }
+
+      const points = Number(profile?.points ?? profile?.coins ?? r.json?.points ?? 0);
+
+      // build unlocked set from profile fields (prefer authoritative)
+      const unlockedSet = new Set();
+      if (Array.isArray(profile?.badges)) profile.badges.forEach(b => unlockedSet.add(typeof b === 'string' ? b : (b.id || String(b))));
+      if (Array.isArray(profile?.achievements)) profile.achievements.forEach(a => unlockedSet.add(a.id || (a.name && a.name.toLowerCase()) || String(a)));
+      if (Array.isArray(profile?.unlockedItems)) profile.unlockedItems.forEach(i => unlockedSet.add(i));
+
+      // helper to find earliest finished date
+      const firstFinishedDate = (() => {
+        if (!Array.isArray(booksReadArray) || booksReadArray.length === 0) return null;
+        for (const e of booksReadArray) {
+          const d = e && (e.finishedAt || e.finishedAtDate || e.date) ? new Date(e.finishedAt || e.finishedAtDate || e.date) : null;
+          if (d && !isNaN(d.getTime())) return d.toLocaleDateString();
+        }
+        return null;
+      })();
+
+      // compute updated achievements: prefer profile-unlocked, else compute from data
+      const updated = initialAchievements.map(a => {
+        const out = { ...a, unlocked: false, progress: outProgressDefault(a), unlockedDate: null };
+
+        const explicitlyUnlocked = unlockedSet.has(a.id) || unlockedSet.has(a.name) || unlockedSet.has(a.name?.toLowerCase());
+        if (explicitlyUnlocked) {
+          out.unlocked = true;
+          out.unlockedDate =
+            (Array.isArray(profile?.achievements) && profile.achievements.find(x => (x.id === a.id || x.name === a.name))?.unlockedAt) ||
+            firstFinishedDate ||
+            new Date().toLocaleDateString();
+          return out;
+        }
+
+        // derive by id
+        if (a.id === 'first-book') {
+          out.unlocked = booksReadCount >= 1;
+          if (out.unlocked) out.unlockedDate = firstFinishedDate || new Date().toLocaleDateString();
+          return out;
+        }
+
+        if (a.id === 'book-collector') {
+          out.progress = Math.min(booksReadCount, a.maxProgress || 50);
+          out.unlocked = booksReadCount >= (a.maxProgress || 50);
+          return out;
+        }
+
+        if (a.id === 'speed-reader') {
+          let recent = 0;
+          if (Array.isArray(booksReadArray)) {
+            const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+            for (const e of booksReadArray) {
+              const ts = e && (e.finishedAt || e.date) ? Date.parse(e.finishedAt || e.date) : NaN;
+              if (!isNaN(ts) && ts >= weekAgo) recent++;
+            }
+          }
+          out.progress = recent;
+          out.unlocked = recent >= 5;
+          if (out.unlocked) out.unlockedDate = firstFinishedDate || new Date().toLocaleDateString();
+          return out;
+        }
+
+        if (a.id === 'quiz-master') {
+          let perfectCount = 0;
+          if (Array.isArray(quizHistory)) {
+            quizHistory.forEach(q => { if (q && (q.score === 100 || q.percentage === 100)) perfectCount++; });
+          }
+          out.progress = perfectCount;
+          out.unlocked = perfectCount >= 10;
+          if (out.unlocked) out.unlockedDate = new Date().toLocaleDateString();
+          return out;
+        }
+
+        if (a.id === 'quiz-veteran') {
+          out.progress = quizCount;
+          out.unlocked = quizCount >= 100;
+          return out;
+        }
+
+        if (a.id === 'accuracy-ace') {
+          if (avgAccuracy !== null) out.progress = avgAccuracy;
+          out.unlocked = (avgAccuracy !== null && avgAccuracy >= (a.maxProgress || 95));
+          return out;
+        }
+
+        if (a.id === 'reading-champion') {
+          out.progress = profile?.level || out.progress;
+          out.unlocked = (profile?.level && profile.level >= (a.maxProgress || 20));
+          return out;
+        }
+
+        if (a.id === 'early-bird') {
+          const sessionsBefore9 = profile?.sessionsBefore9 || 0;
+          out.progress = sessionsBefore9;
+          out.unlocked = sessionsBefore9 >= 10;
+          if (out.unlocked) out.unlockedDate = profile?.earlyBirdAt || firstFinishedDate;
+          return out;
+        }
+
+        if (a.id === 'genre-explorer') {
+          out.progress = profile?.genresRead?.length || 0;
+          out.unlocked = out.progress >= (a.maxProgress || 10);
+          return out;
+        }
+
+        if (a.id === 'perfect-month') {
+          out.progress = profile?.currentMonthStreak || out.progress;
+          out.unlocked = out.progress >= (a.maxProgress || 30);
+          return out;
+        }
+
+        return out;
       });
-    };
-    window.addEventListener("bookOpened", handleBookOpen);
-    return () => window.removeEventListener("bookOpened", handleBookOpen);
-  }, []);
 
-  const upgradeRank = () => {
-    let { tier, stage } = rank;
+      setAchievements(updated);
 
-    if (stage < 5) stage += 1;
-    else {
-      const currentIndex = rankOrder.indexOf(tier);
-      if (currentIndex < rankOrder.length - 1) {
-        tier = rankOrder[currentIndex + 1];
-        stage = 1;
-      }
+      // update milestones using real data
+      setMilestones(prev => prev.map(m => {
+        const copy = { ...m };
+        if (m.id === 'books-30') copy.current = booksReadCount;
+        if (m.id === 'quizzes-150') copy.current = quizCount;
+        if (m.id === 'points-5000') copy.current = points;
+        if (m.id === 'accuracy-90') copy.current = (avgAccuracy !== null ? avgAccuracy : copy.current);
+        return copy;
+      }));
+    } catch (err) {
+      console.warn('Failed to load user achievements data', err);
     }
+  }
 
-    const newRank = { tier, stage };
-    setRank(newRank);
-    localStorage.setItem("rankData", JSON.stringify(newRank));
-
-    setLevel(0);
-    setBooksCompleted(0);
-
-    window.dispatchEvent(new Event("progressUpdate"));
-  };
-
-  useEffect(() => {
-    if (level >= 100 && booksCompleted >= 10) upgradeRank();
-  }, [level, booksCompleted]);
-
-  useEffect(() => {
-    let mounted = true;
-    const { token } = getAuth();
-
-    async function tryFetch(paths, options = {}) {
-      for (const p of paths) {
-        try {
-          const res = await fetch(p, options);
-          if (res.status === 404) continue; 
-          return res;
-        } catch (e) {
-          continue;
-        }
-      }
-      throw new Error("All fetch attempts failed");
-    }
-
-    async function loadRanking() {
-      try {
-        const headers = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-
-        const primaryRanking = `${BASE_URL}/api/ranking`;
-        const fallbackRanking = `${BASE_URL}/ranking`;
-
-        const rRes = await tryFetch([primaryRanking, fallbackRanking], { headers });
-        if (rRes && rRes.ok) {
-          const json = await rRes.json();
-          const tier = json?.tier || json?.currentRank?.split?.(" ")?.[0] || rank.tier;
-          const stage = Number(json?.sublevel || json?.sublevel === 0 ? json.sublevel : json?.sublevel) || json?.sublevel || rank.stage || 1;
-          const progress = Number(json?.progressInSublevel || 0);
-          const computedLevel = Math.min(Math.round((progress / 10) * 100), 100);
-
-          if (mounted) {
-            const newRank = { tier, stage: Math.max(1, Math.min(5, stage)) };
-            setRank(newRank);
-            localStorage.setItem("rankData", JSON.stringify(newRank));
-
-            // Use returned totals where possible
-            const totalCompleted = Number(json?.totalCompletedBooks ?? booksCompleted);
-            setBooksRead(totalCompleted);
-            setBooksCompleted(totalCompleted);
-            localStorage.setItem("booksRead", totalCompleted);
-            localStorage.setItem("completedProgress", totalCompleted);
-
-            if (typeof json?.totalPoints !== "undefined") {
-              setPoints(Number(json.totalPoints));
-              localStorage.setItem("points", Number(json.totalPoints));
-            } else {
-            }
-
-            setLevel(computedLevel);
-            localStorage.setItem("levelProgress", computedLevel);
-          }
-        } else {
-          // console.warn('Ranking endpoint failed', rRes && rRes.status);
-        }
-
-        const primaryHistory = `${BASE_URL}/api/ranking/history`;
-        const fallbackHistory = `${BASE_URL}/ranking/history`;
-        try {
-          const hRes = await tryFetch([primaryHistory, fallbackHistory], { headers });
-          if (hRes && hRes.ok) {
-            const hj = await hRes.json();
-            if (mounted) {
-              setHistory(Array.isArray(hj?.history) ? hj.history : []);
-            }
-          }
-        } catch (e) {
-        }
-      } catch (e) {
-        // console.warn('loadRanking error', e);
-      }
-    }
-    loadRanking();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const levelPercent = Math.min((level / levelGoal) * 100, 100);
-  const booksPercent = Math.min((booksRead / booksGoal) * 100, 100);
-  const currentRankImage = rankImages[rank.tier]?.[rank.stage - 1] || bronze1;
+  const unlockedCount = achievements.filter(a => a.unlocked).length;
+  const completionPercentage = Math.round((unlockedCount / achievements.length) * 100);
 
   return (
-    <div className="w-full pt-2 px-4 sm:px-6 lg:px-30 min-h-screen overflow-auto bg-gradient-to-b from-[#FDEBD0] via-[#F1E5D5] to-[#FDEBD0]">
-      <h2 className="text-2xl sm:text-3xl font-extrabold ml-2 mb-3 mt-10 text-[#6A001A]">
-        Learning Progress
-      </h2>
+    <div className="w-full flex flex-col items-center pb-10">
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-10 mt-2">
-        <div className="glow-card p-4 sm:p-8 h-[180px] sm:h-[200px] flex flex-col justify-center items-center shadow-lg rounded-xl">
-          <img src={currentRankImage} alt="Rank Icon" className="w-14 sm:w-16 h-14 sm:h-16 mb-2 sm:mb-3 object-contain" />
-          <div className="text-lg sm:text-xl font-semibold text-black">Current Rank</div>
-          <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-black">
-            {rank.tier} {romanStages[rank.stage - 1]}
+      <div className="w-full max-w-[calc(100%-40px)] sm:max-w-[calc(100%-60px)] lg:max-w-[calc(100%-90px)] mb-6">
+        <h2 className="text-2xl sm:text-3xl font-extrabold ml-2 mb-3 mt-10 text-[#6A001A]"> Achievements & Badges </h2>
+      </div>
+
+      <div className="bg-white border border-black rounded-[20px] p-4 sm:p-6 shadow mb-6 
+                      w-full max-w-[calc(100%-40px)] sm:max-w-[calc(100%-60px)] lg:max-w-[calc(100%-90px)]">
+
+        <div className="grid grid-cols-3 text-center gap-4 sm:gap-6">
+
+          <div>
+            <p className="font-kameron-semibold text-[32px] sm:text-[38px] md:text-[42px] text-[#870022]">
+              {unlockedCount}
+            </p>
+            <p className="text-[15px] sm:text-[18px] md:text-[20px] text-black/60">Badges Earned</p>
           </div>
+
+          <div>
+            <p className="font-kameron-semibold text-[32px] sm:text-[38px] md:text-[42px] text-[#870022]">
+              {achievements.length}
+            </p>
+            <p className="text-[15px] sm:text-[18px] md:text-[20px] text-black/60">Total Badges</p>
+          </div>
+
+          <div>
+            <p className="font-kameron-semibold text-[32px] sm:text-[38px] md:text-[42px] text-[#870022]">
+              {completionPercentage}%
+            </p>
+            <p className="text-[15px] sm:text-[18px] md:text-[20px] text-black/60">Completion</p>
+          </div>
+
         </div>
 
-        <div className="glow-card p-4 sm:p-8 h-[180px] sm:h-[200px] flex flex-col justify-center items-center shadow-lg rounded-xl">
-          <FaLevelUpAlt className="text-green-500 text-3xl sm:text-4xl mb-2 sm:mb-3" />
-          <div className="text-lg sm:text-xl font-semibold text-black">Level</div>
-          <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-black">{level}%</div>
-        </div>
-
-        <div className="glow-card p-4 sm:p-8 h-[180px] sm:h-[200px] flex flex-col justify-center items-center shadow-lg rounded-xl">
-          <FaStar className="text-blue-500 text-3xl sm:text-4xl mb-2 sm:mb-3" />
-          <div className="text-lg sm:text-xl font-semibold text-black">Total Points</div>
-          <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-black">{points}</div>
-        </div>
-
-        <div className="glow-card p-4 sm:p-8 h-[180px] sm:h-[200px] flex flex-col justify-center items-center shadow-lg rounded-xl">
-          <FaBook className="text-red-500 text-3xl sm:text-4xl mb-2 sm:mb-3" />
-          <div className="text-lg sm:text-xl font-semibold text-black">Books Read</div>
-          <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-black">{booksRead}</div>
+        <div className="mt-4">
+          <div className="w-full bg-gray-200 rounded-full h-3 sm:h-4">
+            <div className="bg-[#870022] h-full rounded-full" style={{ width: `${completionPercentage}%` }}></div>
+          </div>
         </div>
       </div>
 
-      <h2 className="text-2xl sm:text-3xl font-extrabold ml-2 mb-3 mt-6 sm:mt-10 text-[#6A001A]">
-        Reading Progress
-      </h2>
 
-      <div className="glow-card border-0 p-4 sm:p-6 shadow-lg h-[300px] sm:h-[350px] flex flex-col">
-        <h1 className="text-xl sm:text-2xl font-bold text-black mb-3">
-          Keep Growing Through Reading
-        </h1>
+      <div className="bg-white border border-black rounded-[20px] p-4 sm:p-6 shadow mb-6 
+                      w-full max-w-[calc(100%-40px)] sm:max-w-[calc(100%-60px)] lg:max-w-[calc(100%-90px)]">
 
-        <div className="flex justify-between mb-2 mt-4 text-black font-bold text-base sm:text-lg">
-          <span>Level Progress</span>
-          <span>{level}/{levelGoal}</span>
+        <h2 className="font-kameron-semibold text-[24px] sm:text-[28px] md:text-[30px] mb-6">
+          All Badges
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
+          {achievements.map((a) => (
+            <div
+              key={a.id}
+              className={`relative p-5 sm:p-6 rounded-lg border-2 flex flex-col items-center text-center
+                ${a.unlocked ? 'bg-yellow-100 border-yellow-400' : 'bg-gray-50 border-gray-200'}
+              `}
+            >
+              <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mb-3
+                ${a.unlocked ? 'bg-[#870022] text-white' : 'bg-gray-300 text-gray-600'}
+              `}>
+                {a.icon}
+              </div>
+
+              <h4 className="font-kameron-semibold text-[16px] sm:text-[18px] mb-1">
+                {a.name}
+              </h4>
+
+              <p className="text-[13px] sm:text-[15px] text-black/70">
+                {a.description}
+              </p>
+
+              {a.unlocked && (
+                <div className="absolute top-2 right-2 bg-yellow-400 rounded-full p-1">
+                  <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-900" />
+                </div>
+              )}
+
+              <div className="absolute top-2 left-2 px-2 py-1 rounded text-[11px] sm:text-[13px] bg-blue-100 text-blue-800">
+                {a.category}
+              </div>
+
+              {!!a.maxProgress && (
+                <div className="w-full mt-4">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-[#870022] h-2 rounded-full" style={{ width: `${Math.min(100, (a.progress / a.maxProgress) * 100)}%` }} />
+                  </div>
+                  <p className="text-[12px] mt-1">{a.progress}/{a.maxProgress}</p>
+                </div>
+              )}
+            </div>
+          ))}
+
         </div>
+      </div>
 
-        <div className="w-full h-5 sm:h-6 bg-blue-200 rounded-full">
-          <div className="h-full bg-blue-600 rounded-full" style={{ width: `${levelPercent}%` }}></div>
-        </div>
 
-        <div className="flex justify-between mb-2 mt-6 text-black font-bold text-base sm:text-lg">
-          <span>Books Read</span>
-          <span>{booksRead}/{booksGoal}</span>
-        </div>
+      <div className="bg-white border border-black rounded-[20px] p-4 sm:p-6 shadow
+                      w-full max-w-[calc(100%-40px)] sm:max-w-[calc(100%-60px)] lg:max-w-[calc(100%-90px)]">
 
-        <div className="w-full h-5 sm:h-6 bg-blue-200 rounded-full">
-          <div className="h-full bg-blue-600 rounded-full" style={{ width: `${booksPercent}%` }}></div>
-        </div>
+        <h2 className="font-kameron-semibold text-[24px] sm:text-[28px] md:text-[30px] mb-6">
+          Current Milestones
+        </h2>
 
-        <div className="mt-3 sm:mt-4 text-black text-base sm:text-lg font-semibold">
-          {booksRead} / {booksGoal} books completed
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {milestones.map((m) => {
+            const progress = Math.min((m.current / m.target) * 100, 100);
+
+            return (
+              <div key={m.id} className="bg-[#f3ebe2] p-5 sm:p-6 rounded-lg">
+
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h4 className="font-kameron-semibold text-[18px] sm:text-[22px]">{m.title}</h4>
+                    <p className="text-[14px] sm:text-[17px] text-black/60">Reward: {m.reward}</p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="font-kameron-semibold text-[18px] sm:text-[22px]">
+                      {m.current} / {m.target}
+                    </p>
+                    <p className="text-[14px] sm:text-[16px] text-black/60">{Math.round(progress)}%</p>
+                  </div>
+                </div>
+
+                <div className="w-full bg-gray-300 rounded-full h-3 sm:h-4">
+                  <div className="bg-[#870022] h-full rounded-full" style={{ width: `${progress}%` }}></div>
+                </div>
+
+                <p className="text-[14px] sm:text-[16px] text-black/50 mt-2">
+                  {Math.max(0, m.target - m.current)} more to go!
+                </p>
+
+              </div>
+            );
+          })}
+
         </div>
       </div>
     </div>
   );
-};
-
-export default LearningProgress;
+}
