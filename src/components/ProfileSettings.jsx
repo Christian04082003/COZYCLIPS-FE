@@ -241,10 +241,14 @@ const ProfileSettings = () => {
 
     if (profilePic) {
       const p = String(profilePic);
-      updated.avatarUrl =
-        p.startsWith("http") || p.startsWith("https")
-          ? p
-          : window.location.origin + (p.startsWith("/") ? p : "/" + p);
+      if (p.startsWith("data:")) {
+        updated.avatarBase64 = p;
+      } else {
+        updated.avatarUrl =
+          p.startsWith("http") || p.startsWith("https")
+            ? p
+            : window.location.origin + (p.startsWith("/") ? p : "/" + p);
+      }
     }
 
     try {
